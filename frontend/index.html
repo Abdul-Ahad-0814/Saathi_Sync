@@ -1,20 +1,95 @@
-<div class="container">
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SaathiSync - Login</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
 
-  <div class="sidebar">
-    <h2>SaathiSync</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="partners.html">Study Partners</a>
-    <a href="groups.html">Groups</a>
-    <a href="deadlines.html">Deadlines</a>
-    <a href="resources.html">Resources</a>
-    <a href="library.html">Library</a>
-    <a href="bookmarks.html">Bookmarks</a>
-    <a href="sessions.html">Study Sessions</a>
-    <a href="profile.html">Profile</a>
-  </div>
+<div class="container" style="align-items: center; justify-content: center; min-height: 100vh;">
 
-  <div class="main">
-    <!-- Page Content Here -->
+  <div class="main" style="max-width: 450px; width: 100%; padding: 0;">
+    <div class="card" style="margin: 0;">
+      <h2 style="text-align: center; margin-bottom: 30px; font-size: 32px;">Welcome to SaathiSync</h2>
+
+      <div id="loginForm">
+        <h3 style="text-align: center; margin-bottom: 25px; color: #0ea5e9;">Login</h3>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="Enter your password" required>
+        </div>
+        <button class="btn" onclick="login()" style="width: 100%; margin-bottom: 20px; font-size: 16px;">Login</button>
+        <p style="text-align: center; color: #475569;">
+          Don't have an account?
+          <a href="#" onclick="showSignup(); return false;" style="color: #0ea5e9; text-decoration: none; font-weight: 700;">Sign up</a>
+        </p>
+      </div>
+
+      <div id="signupForm" style="display: none;">
+        <h3 style="text-align: center; margin-bottom: 25px; color: #0ea5e9;">Create Account</h3>
+        <div class="form-group">
+          <label for="signupName">Full Name</label>
+          <input id="signupName" placeholder="Enter your full name" required>
+        </div>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input id="signupEmail" type="email" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" type="password" placeholder="Create a password (min 8 chars)" required>
+        </div>
+        <div class="form-group">
+          <label for="signupConfirm">Confirm Password</label>
+          <input id="signupConfirm" type="password" placeholder="Confirm your password" required>
+        </div>
+        <button class="btn" onclick="signup()" style="width: 100%; margin-bottom: 20px; font-size: 16px;">Sign Up</button>
+        <p style="text-align: center; color: #475569;">
+          Already have an account?
+          <a href="#" onclick="showLogin(); return false;" style="color: #0ea5e9; text-decoration: none; font-weight: 700;">Login</a>
+        </p>
+      </div>
+    </div>
   </div>
 
 </div>
+
+<script src="js/app.js"></script>
+<script>
+  function showSignup() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'block';
+  }
+
+  function showLogin() {
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+  }
+
+  async function signup() {
+    const res = await fetch(API + "/signup", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        name: document.getElementById("signupName").value,
+        email: document.getElementById("signupEmail").value,
+        password: document.getElementById("signupPassword").value
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message);
+      showLogin();
+    } else {
+      alert(data.error);
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Study Sessions</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+  <div class="sidebar">
+    <h2>SaathiSync</h2>
+    <a href="sessions.html">Study Sessions</a>
+  </div>
+
+  <div class="main">
+
+    <div class="card">
+      <h3>Add Study Session</h3>
+      <input id="subject" placeholder="Subject">
+      <input id="duration" placeholder="Duration (hours)">
+      <button class="btn" onclick="addSession()">Add</button>
+    </div>
+
+    <div class="card">
+      <h3>Session History</h3>
+      <div id="sessionList"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
