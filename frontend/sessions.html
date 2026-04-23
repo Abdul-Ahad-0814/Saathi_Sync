@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Study Sessions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -9,21 +10,49 @@
 <div class="container">
 
   <div class="sidebar">
-    <h2>SaathiSync</h2>
-    <a href="sessions.html">Study Sessions</a>
+    <div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div>
+    <p class="sidebar-section-label">Menu</p>
+    <a href="dashboard.html"><span class="nav-icon">◩</span><span>Dashboard</span></a>
+    <a href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
+    <a href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
+    <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
+    <a class="active" href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
+    <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
   </div>
 
   <div class="main">
 
-    <div class="card">
+    <div class="topbar page-topbar">
+      <h1>Study Sessions</h1>
+    </div>
+
+    <div class="card timer-card">
+      <h3>Focus Timer</h3>
+      <div class="timer-display">01:25:00</div>
+      <p>Track focused study blocks and keep consistency high.</p>
+      <div class="timer-controls">
+        <button class="btn btn-light-control" type="button">Pause</button>
+        <button class="btn btn-stop-control" type="button">Stop</button>
+      </div>
+    </div>
+
+    <div class="card form-card">
       <h3>Add Study Session</h3>
-      <input id="subject" placeholder="Subject">
-      <input id="duration" placeholder="Duration (hours)">
+      <div class="session-form-grid">
+        <input id="subject" placeholder="Subject">
+        <input id="duration" placeholder="Duration (hours)">
+      </div>
       <button class="btn" onclick="addSession()">Add</button>
     </div>
 
-    <div class="card">
-      <h3>Session History</h3>
+    <div class="card history-card">
+      <div class="section-head">
+        <h3>Session History</h3>
+        <span class="badge-status completed">3 Records</span>
+      </div>
+      <div class="session-row"><strong>Apr 21, 2026</strong><span>2h 30m</span><span>Linear Algebra</span><span class="badge-status completed">Completed</span></div>
+      <div class="session-row"><strong>Apr 20, 2026</strong><span>1h 40m</span><span>Operating Systems</span><span class="badge-status in-progress">In Progress</span></div>
+      <div class="session-row"><strong>Apr 19, 2026</strong><span>50m</span><span>Python Revision</span><span class="badge-status pending">Pending</span></div>
       <div id="sessionList"></div>
     </div>
 

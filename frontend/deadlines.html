@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Deadlines</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -8,15 +10,23 @@
 <div class="container">
   
   <div class="sidebar">
-    <h2>SaathiSync</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="deadlines.html">Deadlines</a>
+    <div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div>
+    <p class="sidebar-section-label">Menu</p>
+    <a href="dashboard.html"><span class="nav-icon">◩</span><span>Dashboard</span></a>
+    <a href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
+    <a class="active" href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
+    <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
+    <a href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
+    <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
   </div>
 
   <div class="main">
-    <h1>Study Deadlines</h1>
+    <div class="topbar page-topbar">
+      <h1>Study Deadlines</h1>
+      <button class="btn" onclick="addDeadline()">Add Deadline</button>
+    </div>
 
-    <div class="card">
+    <div class="card form-card">
       <h2>Add New Deadline</h2>
       <div class="form-group">
         <label for="title">Deadline Title</label>
@@ -30,9 +40,33 @@
     </div>
 
     <div class="card">
+      <div class="filter-bar">
+        <select>
+          <option>All Priorities</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+        <select>
+          <option>All Statuses</option>
+          <option>Completed</option>
+          <option>In Progress</option>
+          <option>Pending</option>
+        </select>
+        <input type="date" placeholder="From date">
+        <input type="date" placeholder="To date">
+      </div>
       <h2>Your Deadlines</h2>
-      <div id="deadlinesList" class="grid">
+      <div class="table-shell">
+        <div class="table-head">
+          <span>Title</span>
+          <span>Due Date</span>
+          <span>Priority</span>
+          <span>Actions</span>
+        </div>
+        <div id="deadlinesList" class="deadlines-table-list">
         <!-- Deadlines will be loaded here -->
+        </div>
       </div>
     </div>
   </div>

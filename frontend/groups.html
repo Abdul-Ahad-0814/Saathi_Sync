@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Groups</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -9,15 +10,23 @@
 <div class="container">
 
   <div class="sidebar">
-    <h2>SaathiSync</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="groups.html">Groups</a>
+    <div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div>
+    <p class="sidebar-section-label">Menu</p>
+    <a href="dashboard.html"><span class="nav-icon">◩</span><span>Dashboard</span></a>
+    <a class="active" href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
+    <a href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
+    <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
+    <a href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
+    <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
   </div>
 
   <div class="main">
-    <h1>Study Groups</h1>
+    <div class="topbar page-topbar">
+      <h1>Study Groups</h1>
+      <button class="btn">Create Group</button>
+    </div>
 
-    <div class="card">
+    <div class="card form-card">
       <h2>Create New Group</h2>
       <div class="form-group">
         <label for="groupName">Group Name</label>
@@ -32,7 +41,7 @@
 
     <div class="card">
       <h2>Available Groups</h2>
-      <div id="groupsList" class="grid">
+      <div id="groupsList" class="groups-grid">
         <!-- Groups will be loaded here -->
       </div>
     </div>
