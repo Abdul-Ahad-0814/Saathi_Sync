@@ -24,6 +24,7 @@
   --sidebar-width: 220px;
   --topbar-height: 64px;
   --muted: #6B7280;
+  --gradient-color-box: linear-gradient(to left, #038131, #061d0f);
 }
 
 * {
@@ -359,6 +360,24 @@ textarea:focus {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+}
+
+.profile-dropdown{
+    position: absolute;
+  top: 60px;
+  right: 20px;
+
+  background: #1e1e2f;
+  /* background: linear-gradient(to right, #16A34A, #22C55E); */
+  color: white;
+
+  border-radius: 10px;
+  padding: 10px;
+  width: 150px;
+
+  display: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
 }
 
 .profile-chip .avatar {
@@ -373,17 +392,35 @@ textarea:focus {
   font-weight: 700;
 }
 
-.profile-chip strong {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-heading);
+.profile-dropdown {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+
+  /* background: #1e1e2f; */
+  background: var(--gradient-color-box);
+  color: white;
+
+  border-radius: 10px;
+  padding: 10px;
+  width: 150px;
+
+  display: none;
+
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+
+  z-index: 9999; /* 👈 ADD THIS */
 }
 
-.profile-chip small {
+.profile-dropdown a {
   display: block;
-  font-size: 12px;
-  color: var(--color-text-muted);
+  padding: 8px 10px;
+  text-decoration: none;
+  color: white;
+}
+
+.profile-dropdown a:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 .stats-grid {

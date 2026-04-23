@@ -450,65 +450,8 @@ function showLogin() {
 }
 
 //------------------------------------------------------------
-
-// let totalTime = 60 * 60; // 1 hour (change if needed)
-// let remainingTime = totalTime;
-// let interval = null;
-
-// const timer = document.getElementById("floatingTimer");
-// const display = timer.querySelector(".timer-display");
-
-// const startBtn = timer.querySelector(".btn-start-control");
-// const pauseBtn = timer.querySelector(".btn-light-control");
-// const stopBtn = timer.querySelector(".btn-stop-control");
-
-// // format hh:mm:ss
-// function formatTime(seconds) {
-//   let h = Math.floor(seconds / 3600);
-//   let m = Math.floor((seconds % 3600) / 60);
-//   let s = seconds % 60;
-
-//   return (
-//     String(h).padStart(2, '0') + ":" +
-//     String(m).padStart(2, '0') + ":" +
-//     String(s).padStart(2, '0')
-//   );
-// }
-
-// // initial display
-// display.innerText = formatTime(remainingTime);
-
-// startBtn.addEventListener("click", () => {
-//   if (interval !== null) return;
-
-//   timer.classList.add("show"); // show floating box
-
-//   interval = setInterval(() => {
-//     if (remainingTime > 0) {
-//       remainingTime--;
-//       display.innerText = formatTime(remainingTime);
-//     } else {
-//       clearInterval(interval);
-//       interval = null;
-//       alert("Time's up!");
-//     }
-//   }, 1000);
-// });
-
-// pauseBtn.addEventListener("click", () => {
-//   clearInterval(interval);
-//   interval = null;
-// });
-
-// stopBtn.addEventListener("click", () => {
-//   clearInterval(interval);
-//   interval = null;
-
-//   remainingTime = totalTime;
-//   display.innerText = formatTime(remainingTime);
-
-//   timer.classList.remove("show"); // hide again
-// });
+//Timer
+//------------------------------------------------------------
 
 let elapsedTime = 0; // starts from 0
 let interval = null;
@@ -563,4 +506,22 @@ stopBtn.addEventListener("click", () => {
   display.innerText = formatTime(elapsedTime);
 
   timer.classList.remove("show"); // hide (optional)
+});
+
+//----------------------------------------------
+//Profile chip on Dashboard
+//----------------------------------------------
+const chip = document.getElementById("profileChip");
+const dropdown = document.getElementById("profileDropdown");
+
+chip.addEventListener("click", () => {
+  dropdown.style.display =
+    dropdown.style.display === "block" ? "none" : "block";
+});
+
+// optional: close when clicking outside
+document.addEventListener("click", (e) => {
+  if (!chip.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.style.display = "none";
+  }
 });
