@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Library</title>
+  <title>Logout</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -17,48 +17,29 @@
     <a href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
     <a href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
     <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
-    <a class="active" href="library.html"><span class="nav-icon">▤</span><span>Library</span></a>
+    <a href="library.html"><span class="nav-icon">▤</span><span>Library</span></a>
     <a href="bookmarks.html"><span class="nav-icon">▮</span><span>Bookmarks</span></a>
 
     <p class="sidebar-section-label">General</p>
     <a href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
     <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
     <a href="settings.html"><span class="nav-icon">◫</span><span>Settings</span></a>
-    <a href="logout.html"><span class="nav-icon">↦</span><span>Logout</span></a>
+    <a class="active" href="logout.html"><span class="nav-icon">↦</span><span>Logout</span></a>
   </div>
 
   <div class="main">
     <div class="topbar page-topbar">
-      <h1>Library</h1>
+      <h1>Logout</h1>
     </div>
 
-    <div class="card library-search-card">
-      <h3>Search Books</h3>
-      <p class="helper-text">Search by title, author, or topic.</p>
-      <div class="library-search-row">
-        <input id="search" placeholder="Enter book name">
-        <button class="btn" onclick="loadBooks()">Search</button>
+    <div class="card logout-card">
+      <h2>Sign out of SaathiSync?</h2>
+      <p>You can sign back in anytime to continue your study progress.</p>
+      <div class="logout-actions">
+        <button class="btn" onclick="logout()">Yes, Logout</button>
+        <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">Cancel</button>
       </div>
     </div>
-
-    <div class="card library-feature-card">
-      <h3>Browse Collections</h3>
-      <div class="library-pill-row">
-        <span class="badge-status completed">Engineering</span>
-        <span class="badge-status in-progress">Medical</span>
-        <span class="badge-status pending">Commerce</span>
-        <span class="badge-status completed">Humanities</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-head">
-        <h3>Books</h3>
-        <span class="badge-status pending">Live Results</span>
-      </div>
-      <div id="books" class="library-results-grid"></div>
-    </div>
-
   </div>
 
 </div>

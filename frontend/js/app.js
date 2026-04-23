@@ -525,3 +525,74 @@ document.addEventListener("click", (e) => {
     dropdown.style.display = "none";
   }
 });
+
+
+//------------------------------------------------------
+//Bar chart on dashboard
+//------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const bars = document.querySelectorAll(".chart-bars span");
+  
+  console.log("Bars found:", bars.length);
+  
+  let barData = Array.from(bars).map((bar, index) => {
+    let height = parseFloat(bar.style.height);
+    console.log("Bar", index, "height:", height);
+    return { index, height };
+  });
+  
+  barData.sort((a, b) => b.height - a.height);
+
+  console.log("Sorted:", barData);
+
+  if (barData[0]) {
+    console.log("Top 1:", barData[0]);
+    bars[barData[0].index].classList.add("bar-1");
+  }
+  
+  if (barData[1]) {
+    console.log("Top 2:", barData[1]);
+    bars[barData[1].index].classList.add("bar-2");
+  }
+  
+  if (barData[2]) {
+    console.log("Top 3:", barData[2]);
+    bars[barData[2].index].classList.add("bar-3");
+  }
+});
+
+
+//------------------------------------------------------
+//Donut Shell on Dashboard
+//------------------------------------------------------
+// document.addEventListener("DOMContentLoaded", () => {
+//   const progress = 78; // 🔥 dynamic value (you can change later)
+
+//   const donut = document.querySelector(".donut-shell");
+//   const text = document.querySelector(".donut-center strong");
+
+//   // update CSS variable
+//   donut.style.setProperty("--progress", progress + "%");
+
+//   // update text
+//   text.innerText = progress + "%";
+// });
+document.addEventListener("DOMContentLoaded", () => {
+  const donut = document.querySelector(".donut-shell");
+  const text = document.querySelector(".donut-center strong");
+
+  let target = 78;   // final value
+  let current = 0;
+
+  let interval = setInterval(() => {
+    if (current >= target) {
+      clearInterval(interval);
+      return;
+    }
+
+    current++;
+    donut.style.setProperty("--progress", current + "%");
+    text.innerText = current + "%";
+
+  }, 10); // speed (lower = faster)
+});
