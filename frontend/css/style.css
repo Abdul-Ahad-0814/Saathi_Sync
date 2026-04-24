@@ -25,6 +25,7 @@
   --topbar-height: 64px;
   --muted: #6B7280;
   --gradient-color-box: linear-gradient(to left, #038131, #061d0f);
+  --gradient-color-card: linear-gradient(to left, #038131, #ffffff);
 }
 
 * {
@@ -1287,4 +1288,8 @@ textarea:focus {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 8px;
+}
+
+.project-card{
+  background: var(--gradient-color-card);
 }
