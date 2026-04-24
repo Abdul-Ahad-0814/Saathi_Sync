@@ -122,39 +122,30 @@ async function signup() {
  */
 async function createGroup() {
   const user_id = localStorage.getItem('user_id');
-  if (!user_id) {
-    alert('Please login first');
-    return;
-  }
+  if (!user_id) { alert('Please login first'); return; }
 
   const name = document.getElementById("groupName").value;
   const description = document.getElementById("groupDesc").value;
 
-  if (!name) {
-    alert("Group name is required");
-    return;
-  }
+  if (!name) { alert("Group name is required"); return; }
 
   try {
-    const res = await fetch(API + "/create-group", {
+    const res = await fetch(API + "/groups", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ name, description, created_by: user_id })
+      body: JSON.stringify({ group_name: name, user_id: user_id })
     });
-
     const data = await res.json();
-
     if (res.ok) {
       alert("Group created successfully");
       document.getElementById("groupName").value = '';
       document.getElementById("groupDesc").value = '';
       loadGroups();
     } else {
-      alert(data.message || "Failed to create group");
+      alert(data.error || "Failed to create group");
     }
   } catch (error) {
     alert("Error connecting to server");
-    console.error(error);
   }
 }
 
@@ -168,33 +159,27 @@ async function createGroup() {
  * CURRENT: Returns mock data for frontend testing
  */
 async function loadGroups() {
-  const user_id = localStorage.getItem('user_id');
-  if (!user_id) return;
-
   try {
-    const res = await fetch(API + "/groups?user_id=" + user_id);
+    const res = await fetch(API + "/groups");
     const data = await res.json();
+    const list = document.getElementById("groupsList");
+    list.innerHTML = '';
 
-    if (res.ok && data.groups) {
-      const list = document.getElementById("groupsList");
-      list.innerHTML = '';
-
-      if (data.groups.length === 0) {
-        list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No groups yet. Create one to get started!</p>';
-        return;
-      }
-
-      data.groups.forEach(group => {
-        const item = document.createElement('div');
-        item.className = 'card';
-        item.innerHTML = `
-          <h3>${group.name}</h3>
-          <p>${group.description || 'No description'}</p>
-          <small>Created: ${new Date(group.created_at).toLocaleDateString()}</small>
-        `;
-        list.appendChild(item);
-      });
+    if (data.length === 0) {
+      list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No groups yet.</p>';
+      return;
     }
+
+    data.forEach(group => {
+      const item = document.createElement('div');
+      item.className = 'card';
+      item.innerHTML = `
+        <h3>${group.group_name}</h3>
+        <p>Subject: ${group.subject || 'N/A'}</p>
+        <small>Created by: ${group.created_by}</small>
+      `;
+      list.appendChild(item);
+    });
   } catch (error) {
     console.error("Error loading groups:", error);
   }
@@ -212,42 +197,32 @@ async function loadGroups() {
  */
 async function addDeadline() {
   const user_id = localStorage.getItem('user_id');
-  if (!user_id) {
-    alert('Please login first');
-    return;
-  }
+  if (!user_id) { alert('Please login first'); return; }
 
   const title = document.getElementById("title").value;
   const date = document.getElementById("date").value;
 
-  if (!title || !date) {
-    alert("Title and date are required");
-    return;
-  }
+  if (!title || !date) { alert("Title and date are required"); return; }
 
   try {
-    const res = await fetch(API + "/add-deadline", {
+    const res = await fetch(API + "/deadlines", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ title, date, user_id })
+      body: JSON.stringify({ title, due_date: date, user_id: user_id })
     });
-
     const data = await res.json();
-
     if (res.ok) {
       alert("Deadline added successfully");
       document.getElementById("title").value = '';
       document.getElementById("date").value = '';
       loadDeadlines();
     } else {
-      alert(data.message || "Failed to add deadline");
+      alert(data.error || "Failed to add deadline");
     }
   } catch (error) {
     alert("Error connecting to server");
-    console.error(error);
   }
 }
-
 /**
  * LOAD DEADLINES FUNCTION
  * TODO: Implement backend /get-deadlines endpoint with:
@@ -262,30 +237,28 @@ async function loadDeadlines() {
   if (!user_id) return;
 
   try {
-    const res = await fetch(API + "/get-deadlines?user_id=" + user_id);
+    const res = await fetch(API + "/deadlines/" + user_id);
     const data = await res.json();
+    const list = document.getElementById("deadlinesList");
+    list.innerHTML = '';
 
-    if (res.ok && data.deadlines) {
-      const list = document.getElementById("deadlinesList");
-      list.innerHTML = '';
-
-      if (data.deadlines.length === 0) {
-        list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No deadlines yet.</p>';
-        return;
-      }
-
-      data.deadlines.forEach(deadline => {
-        const item = document.createElement('div');
-        item.className = 'card';
-        const deadlineDate = new Date(deadline.date);
-        item.innerHTML = `
-          <h3>${deadline.title}</h3>
-          <p>Due: ${deadlineDate.toLocaleDateString()}</p>
-          <button onclick="deleteDeadline(${deadline.id})" class="btn btn-danger">Delete</button>
-        `;
-        list.appendChild(item);
-      });
+    if (data.length === 0) {
+      list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No deadlines yet.</p>';
+      return;
     }
+
+    data.forEach(deadline => {
+      const item = document.createElement('div');
+      item.className = 'card';
+      item.innerHTML = `
+        <h3>${deadline.title}</h3>
+        <p>Subject: ${deadline.subject || 'N/A'}</p>
+        <p>Due: ${deadline.due_date}</p>
+        <p>Priority: ${deadline.priority}</p>
+        <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+      `;
+      list.appendChild(item);
+    });
   } catch (error) {
     console.error("Error loading deadlines:", error);
   }
@@ -301,29 +274,19 @@ async function loadDeadlines() {
  * CURRENT: Returns mock data for frontend testing
  */
 async function deleteDeadline(id) {
-  const user_id = localStorage.getItem('user_id');
-  if (!user_id) return;
-
-  if (!confirm("Are you sure you want to delete this deadline?")) {
-    return;
-  }
+  if (!confirm("Are you sure you want to delete this deadline?")) return;
 
   try {
-    const res = await fetch(API + `/delete-deadline/${id}?user_id=${user_id}`, {
-      method: "DELETE"
-    });
-
+    const res = await fetch(API + `/deadlines/${id}`, { method: "DELETE" });
     const data = await res.json();
-
     if (res.ok) {
       alert("Deadline deleted");
       loadDeadlines();
     } else {
-      alert(data.message || "Failed to delete deadline");
+      alert(data.error || "Failed to delete deadline");
     }
   } catch (error) {
     alert("Error connecting to server");
-    console.error(error);
   }
 }
 
@@ -340,46 +303,30 @@ async function deleteDeadline(id) {
  */
 async function uploadResource() {
   const user_id = localStorage.getItem('user_id');
-  if (!user_id) {
-    alert('Please login first');
-    return;
-  }
+  if (!user_id) { alert('Please login first'); return; }
 
   const title = document.getElementById("resourceTitle").value;
   const description = document.getElementById("resourceDesc").value;
-  const fileInput = document.getElementById("resourceFile");
 
-  if (!title || !fileInput.files.length) {
-    alert("Title and file are required");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('title', title);
-  formData.append('description', description);
-  formData.append('file', fileInput.files[0]);
-  formData.append('uploaded_by', user_id);
+  if (!title) { alert("Title is required"); return; }
 
   try {
-    const res = await fetch(API + "/upload-resource", {
+    const res = await fetch(API + "/resources", {
       method: "POST",
-      body: formData
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ title, user_id: user_id, type: "Notes", file_path: description })
     });
-
     const data = await res.json();
-
     if (res.ok) {
       alert("Resource uploaded successfully");
       document.getElementById("resourceTitle").value = '';
       document.getElementById("resourceDesc").value = '';
-      fileInput.value = '';
       loadResources();
     } else {
-      alert(data.message || "Failed to upload resource");
+      alert(data.error || "Failed to upload resource");
     }
   } catch (error) {
     alert("Error connecting to server");
-    console.error(error);
   }
 }
 
@@ -392,34 +339,28 @@ async function uploadResource() {
  * CURRENT: Returns mock data for frontend testing
  */
 async function loadResources() {
-  const user_id = localStorage.getItem('user_id');
-  if (!user_id) return;
-
   try {
-    const res = await fetch(API + "/resources?user_id=" + user_id);
+    const res = await fetch(API + "/resources");
     const data = await res.json();
+    const list = document.getElementById("resourcesList");
+    list.innerHTML = '';
 
-    if (res.ok && data.resources) {
-      const list = document.getElementById("resourcesList");
-      list.innerHTML = '';
-
-      if (data.resources.length === 0) {
-        list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No resources yet.</p>';
-        return;
-      }
-
-      data.resources.forEach(resource => {
-        const item = document.createElement('div');
-        item.className = 'card';
-        item.innerHTML = `
-          <h3>${resource.title}</h3>
-          <p>${resource.description || 'No description'}</p>
-          ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" class="btn">Download</a>` : ''}
-          <small>Uploaded: ${new Date(resource.created_at).toLocaleDateString()}</small>
-        `;
-        list.appendChild(item);
-      });
+    if (data.length === 0) {
+      list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No resources yet.</p>';
+      return;
     }
+
+    data.forEach(resource => {
+      const item = document.createElement('div');
+      item.className = 'card';
+      item.innerHTML = `
+        <h3>${resource.title}</h3>
+        <p>Subject: ${resource.subject || 'N/A'}</p>
+        <p>Type: ${resource.type || 'N/A'}</p>
+        <small>Uploaded by: ${resource.uploaded_by}</small>
+      `;
+      list.appendChild(item);
+    });
   } catch (error) {
     console.error("Error loading resources:", error);
   }

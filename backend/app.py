@@ -1,7 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
 
-# Import all routes
 from routes.auth import auth_bp
 from routes.partners import partners_bp
 from routes.groups import groups_bp
@@ -29,8 +28,4 @@ app.register_blueprint(profile_bp)
 app.register_blueprint(admin_bp)
 
 if __name__ == "__main__":
-    # TODO: Database initialization
-    # Before running, make sure your database is set up and configured
-    # See utils/db.py for database connection setup
-    
     app.run(debug=True, port=5001)

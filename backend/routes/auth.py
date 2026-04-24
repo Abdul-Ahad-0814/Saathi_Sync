@@ -1,34 +1,75 @@
 from flask import Blueprint, request, jsonify
+from utils.db import get_connection
 
 auth_bp = Blueprint('auth', __name__)
 
-@auth_bp.route("/signup", methods=["POST"])
+@auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.json
+
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
+    university = data.get('university')
+    role = data.get('role', 'Student')
 
-    # TODO: Implement user signup
-    # 1. Validate email (check if user already exists)
-    # 2. Hash the password using werkzeug.security.generate_password_hash
-    # 3. Insert user into database
-    # 4. Return user_id and success message
-    # 5. Handle errors and return appropriate status codes
-    
-    return jsonify({"message": "User created successfully", "user_id": 1, "name": name})
+    if not all([name, email, password]):
+        return jsonify({"error": "Name, email and password are required"}), 400
 
-@auth_bp.route("/login", methods=["POST"])
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT UserID FROM Users WHERE Email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({"error": "Email already registered"}), 409
+
+        cur.execute(
+            "INSERT INTO Users (Name, Email, Password, University, Role) VALUES (%s, %s, %s, %s, %s) RETURNING UserID",
+            (name, email, password, university, role)
+        )
+        user_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "User created successfully", "user_id": user_id, "name": name}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.json
+
     email = data.get('email')
     password = data.get('password')
 
-    # TODO: Implement user login
-    # 1. Fetch user from database by email
-    # 2. Verify password using werkzeug.security.check_password_hash
-    # 3. Return user_id, name and success message on valid credentials
-    # 4. Return error on invalid credentials (401 Unauthorized)
-    # BONUS: Implement JWT token generation for better security
-    
-    return jsonify({"message": "Login successful", "user_id": 1, "name": email.split("@")[0]})
+    if not all([email, password]):
+        return jsonify({"error": "Email and password are required"}), 400
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT UserID, Name, Role FROM Users WHERE Email = %s AND Password = %s",
+            (email, password)
+        )
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if user:
+            return jsonify({
+                "message": "Login successful",
+                "user_id": user[0],
+                "name": user[1],
+                "role": user[2]
+            }), 200
+        else:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
