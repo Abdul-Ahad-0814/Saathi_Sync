@@ -396,8 +396,8 @@ function showLogin() {
 
 let elapsedTime = 0; // starts from 0
 let interval = null;
-
-const timer = document.getElementById("floatingTimer");
+// if(document.getElementById("floatingTimer") || document.getElementById("not-float-timer"))
+const timer = document.getElementById("floatingTimer" || "not-float-timer");
 const display = timer.querySelector(".timer-display");
 
 const startBtn = timer.querySelector(".btn-start-control");
@@ -506,18 +506,6 @@ document.addEventListener("DOMContentLoaded", () => {
 //------------------------------------------------------
 //Donut Shell on Dashboard
 //------------------------------------------------------
-// document.addEventListener("DOMContentLoaded", () => {
-//   const progress = 78; // 🔥 dynamic value (you can change later)
-
-//   const donut = document.querySelector(".donut-shell");
-//   const text = document.querySelector(".donut-center strong");
-
-//   // update CSS variable
-//   donut.style.setProperty("--progress", progress + "%");
-
-//   // update text
-//   text.innerText = progress + "%";
-// });
 document.addEventListener("DOMContentLoaded", () => {
   const donut = document.querySelector(".donut-shell");
   const text = document.querySelector(".donut-center strong");
@@ -535,5 +523,5 @@ document.addEventListener("DOMContentLoaded", () => {
     donut.style.setProperty("--progress", current + "%");
     text.innerText = current + "%";
 
-  }, 10); // speed (lower = faster)
+  }, 10);
 });

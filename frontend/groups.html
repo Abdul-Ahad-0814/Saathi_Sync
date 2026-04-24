@@ -1,60 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Groups</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+  <head>
+    <title>Groups</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="sidebar">
+        <a href="dashboard.html"><div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div></a>
+        
+        <p class="sidebar-section-label">Menu</p>
+        <a href="dashboard.html"><span class="nav-icon">◩</span><span>Dashboard</span></a>
+        <a href="partners.html"><span class="nav-icon">◉</span><span>Study Partners</span></a>
+        <a class="active" href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
+        <a href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
+        <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
+        <a href="library.html"><span class="nav-icon">▤</span><span>Library</span></a>
+        <a href="bookmarks.html"><span class="nav-icon">▮</span><span>Bookmarks</span></a>
 
-<div class="container">
+        <p class="sidebar-section-label">General</p>
+        <a href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
+        <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
+        <a href="settings.html"><span class="nav-icon">◫</span><span>Settings</span></a>
+        <a href="logout.html"><span class="nav-icon">↦</span><span>Logout</span></a>
+      
+        <div class="sidebar-promo"><img src="../image_src/logo_3.png"alt="Saathi Logo" class="sidebar-logo"/></div>
 
-  <div class="sidebar">
-    <div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div>
-    <p class="sidebar-section-label">Menu</p>
-    <a href="dashboard.html"><span class="nav-icon">◩</span><span>Dashboard</span></a>
-    <a class="active" href="groups.html"><span class="nav-icon">◎</span><span>Groups</span></a>
-    <a href="deadlines.html"><span class="nav-icon">◷</span><span>Deadlines</span></a>
-    <a href="resources.html"><span class="nav-icon">▣</span><span>Resources</span></a>
-    <a href="sessions.html"><span class="nav-icon">◔</span><span>Study Sessions</span></a>
-    <a href="profile.html"><span class="nav-icon">◌</span><span>Profile</span></a>
-  </div>
+      </div>
 
-  <div class="main">
-    <div class="topbar page-topbar">
-      <h1>Study Groups</h1>
-      <button class="btn">Create Group</button>
+      <div class="main">
+        <div class="topbar page-topbar">
+          <h1>Study Groups</h1>
+          <button class="btn">Create Group</button>
+        </div>
+
+        <div class="card form-card">
+          <h2>Create New Group</h2>
+          <div class="form-group">
+            <label for="groupName">Group Name</label>
+            <input id="groupName" placeholder="Enter group name" required />
+          </div>
+          <div class="form-group">
+            <label for="groupDesc">Description</label>
+            <textarea
+              id="groupDesc"
+              placeholder="Describe your study group"
+              rows="3"
+            ></textarea>
+          </div>
+          <button class="btn" onclick="createGroup()">Create Group</button>
+        </div>
+
+        <div class="card">
+          <h2>Available Groups</h2>
+          <div id="groupsList" class="groups-grid">
+            <!-- Groups will be loaded here -->
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card form-card">
-      <h2>Create New Group</h2>
-      <div class="form-group">
-        <label for="groupName">Group Name</label>
-        <input id="groupName" placeholder="Enter group name" required>
-      </div>
-      <div class="form-group">
-        <label for="groupDesc">Description</label>
-        <textarea id="groupDesc" placeholder="Describe your study group" rows="3"></textarea>
-      </div>
-      <button class="btn" onclick="createGroup()">Create Group</button>
-    </div>
-
-    <div class="card">
-      <h2>Available Groups</h2>
-      <div id="groupsList" class="groups-grid">
-        <!-- Groups will be loaded here -->
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script src="js/app.js"></script>
-<script>
-  window.onload = function() {
-    loadGroups();
-  };
-</script>
-
-</body>
+    <script src="js/app.js"></script>
+    <script>
+      window.onload = function () {
+        loadGroups();
+      };
+    </script>
+  </body>
 </html>
