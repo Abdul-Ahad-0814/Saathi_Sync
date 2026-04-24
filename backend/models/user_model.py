@@ -9,4 +9,4 @@
 # Don't forget to:
 # 1. Use proper password hashing
 # 2. Add validation for email format
-# 3. Handle database errors gracefully
+# 3. Handle database errors gracefullyC

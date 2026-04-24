@@ -1,17 +1,28 @@
-# TODO: Database Initialization Script
-# This script should set up your database schema on first run
-#
-# Steps to implement:
-# 1. Create database (if not exists)
-# 2. Create tables with proper schema:
-#    - users table (id, name, email, password_hash, created_at)
-#    - groups table (id, name, description, created_by, created_at)
-#    - deadlines table (id, title, date, user_id, created_at)
-#    - resources table (id, title, description, file_path, uploaded_by, created_at)
-#    - Add other tables as needed (bookmarks, sessions, etc.)
-# 3. Add foreign key relationships
-# 4. Create indexes for frequently queried columns
-# 5. Add seed data (optional)
-#
-# Run this script once before starting the app:
-# python init_db.py
+import sqlite3
+
+def init_db():
+    conn = sqlite3.connect('saathisync.db')
+    cur = conn.cursor()
+
+    # Create Users table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS Users (
+            UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            Email TEXT UNIQUE NOT NULL,
+            Password TEXT NOT NULL,
+            University TEXT,
+            Role TEXT DEFAULT 'Student'
+        )
+    ''')
+
+    # Add other tables as needed
+    # For now, just Users
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Database initialized.")
+
+if __name__ == "__main__":
+    init_db()
