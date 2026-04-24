@@ -1253,7 +1253,7 @@ textarea:focus {
 
 /* Floating bottom-right */
 #floatingTimer {
-  position: fixed;
+  position: absolute;
   bottom: 20px;
   right: 20px;
 
@@ -1271,6 +1271,8 @@ textarea:focus {
   display: block; /* hidden initially */
 
   transition: all 0.3s ease;
+  cursor: drag;
+  height: min-content;
 }
 
 /* visible state */
@@ -1292,4 +1294,8 @@ textarea:focus {
 
 .project-card{
   background: var(--gradient-color-card);
+}
+
+#mainContainer{
+  position: relative;
 }

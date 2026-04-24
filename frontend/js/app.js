@@ -453,10 +453,117 @@ function showLogin() {
 //Timer
 //------------------------------------------------------------
 
-let elapsedTime = 0; // starts from 0
+// let elapsedTime = 0; // starts from 0
+// let interval = null;
+// // if(document.getElementById("floatingTimer") || document.getElementById("not-float-timer"))
+// const timer = document.getElementsByClassName("timer-card");
+// console.log(timer);
+// const display = timer.querySelector(".timer-card");
+
+// const startBtn = timer.querySelector(".btn-start-control");
+// const pauseBtn = timer.querySelector(".btn-light-control");
+// const stopBtn = timer.querySelector(".btn-stop-control");
+
+// // format time (hh:mm:ss)
+// function formatTime(seconds) {
+//   let h = Math.floor(seconds / 3600);
+//   let m = Math.floor((seconds % 3600) / 60);
+//   let s = seconds % 60;
+
+//   return (
+//     String(h).padStart(2, '0') + ":" +
+//     String(m).padStart(2, '0') + ":" +
+//     String(s).padStart(2, '0')
+//   );
+// }
+
+// // initial display
+// display.innerText = formatTime(elapsedTime);
+
+// // START
+// startBtn.addEventListener("click", () => {
+//   if (interval !== null) return; // prevent multiple timers
+
+//   timer.classList.add("show"); // show floating box
+
+//   interval = setInterval(() => {
+//     elapsedTime++;
+//     display.innerText = formatTime(elapsedTime);
+//   }, 1000);
+// });
+
+// // PAUSE
+// pauseBtn.addEventListener("click", () => {
+//   clearInterval(interval);
+//   interval = null;
+// });
+
+// // STOP (reset)
+// stopBtn.addEventListener("click", () => {
+//   clearInterval(interval);
+//   interval = null;
+
+//   elapsedTime = 0;
+//   display.innerText = formatTime(elapsedTime);
+
+//   timer.classList.remove("show"); // hide (optional)
+// });
+
+// const timers = document.querySelectorAll(".timer-card");
+
+// timers.forEach(timer => {
+//   const display = timer.querySelector(".timer-display");
+//   const startBtn = timer.querySelector(".btn-start-control");
+//   const pauseBtn = timer.querySelector(".btn-light-control");
+//   const stopBtn = timer.querySelector(".btn-stop-control");
+
+//   let elapsedTime = 0;
+//   let interval = null;
+
+//   function formatTime(seconds) {
+//     let h = Math.floor(seconds / 3600);
+//     let m = Math.floor((seconds % 3600) / 60);
+//     let s = seconds % 60;
+
+//     return (
+//       String(h).padStart(2, '0') + ":" +
+//       String(m).padStart(2, '0') + ":" +
+//       String(s).padStart(2, '0')
+//     );
+//   }
+
+//   display.innerText = formatTime(elapsedTime);
+
+//   startBtn.addEventListener("click", () => {
+//     if (interval !== null) return;
+
+//     timer.classList.add("show");
+
+//     interval = setInterval(() => {
+//       elapsedTime++;
+//       display.innerText = formatTime(elapsedTime);
+//     }, 1000);
+//   });
+
+//   pauseBtn.addEventListener("click", () => {
+//     clearInterval(interval);
+//     interval = null;
+//   });
+
+//   stopBtn.addEventListener("click", () => {
+//     clearInterval(interval);
+//     interval = null;
+
+//     elapsedTime = 0;
+//     display.innerText = formatTime(elapsedTime);
+
+//     timer.classList.remove("show");
+//   });
+// });
+
 let interval = null;
-// if(document.getElementById("floatingTimer") || document.getElementById("not-float-timer"))
-const timer = document.getElementById("floatingTimer" || "not-float-timer");
+
+const timer = document.querySelector(".timer-card"); // ✅ fixed
 const display = timer.querySelector(".timer-display");
 
 const startBtn = timer.querySelector(".btn-start-control");
@@ -476,37 +583,132 @@ function formatTime(seconds) {
   );
 }
 
-// initial display
-display.innerText = formatTime(elapsedTime);
+// 🔥 run timer using shared start time
+function runTimer() {
+  clearInterval(interval);
+
+  function updateDisplay() {
+    const startTime = localStorage.getItem("timerStart");
+    if (!startTime) return;
+
+    const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+    display.innerText = formatTime(elapsedTime);
+  }
+
+  updateDisplay();
+
+  interval = setInterval(updateDisplay, 1000);
+}
+
+// initial load sync
+window.addEventListener("load", () => {
+  const isRunning = localStorage.getItem("timerRunning");
+
+  if (isRunning === "true") {
+    runTimer();
+  }
+});
 
 // START
 startBtn.addEventListener("click", () => {
-  if (interval !== null) return; // prevent multiple timers
+  if (interval !== null) return;
 
-  timer.classList.add("show"); // show floating box
+  const startTime = Date.now();
 
-  interval = setInterval(() => {
-    elapsedTime++;
-    display.innerText = formatTime(elapsedTime);
-  }, 1000);
+  localStorage.setItem("timerStart", startTime);
+  localStorage.setItem("timerRunning", "true");
+
+  timer.classList.add("show");
+
+  runTimer();
 });
 
 // PAUSE
 pauseBtn.addEventListener("click", () => {
   clearInterval(interval);
   interval = null;
+
+  localStorage.setItem("timerRunning", "false");
 });
 
-// STOP (reset)
+// STOP
 stopBtn.addEventListener("click", () => {
   clearInterval(interval);
   interval = null;
 
-  elapsedTime = 0;
-  display.innerText = formatTime(elapsedTime);
+  localStorage.removeItem("timerStart");
+  localStorage.removeItem("timerRunning");
 
-  timer.classList.remove("show"); // hide (optional)
+  display.innerText = "00:00:00";
+
+  timer.classList.remove("show");
 });
+
+// 🔥 Sync across tabs/pages instantly
+window.addEventListener("storage", () => {
+  const isRunning = localStorage.getItem("timerRunning");
+
+  if (isRunning === "true") {
+    runTimer();
+  } else {
+    clearInterval(interval);
+  }
+});
+
+//Dragable Timer on dashboard
+const el = document.getElementById("floatingTimer");
+const parent = document.getElementById("mainContainer");
+
+let isDragging = false;
+let startX, startY;
+let currentX = 0, currentY = 0;
+let rafId = null;
+
+el.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  el.style.cursor = "grabbing";
+
+  // Initial offset calculation
+  startX = e.clientX - currentX;
+  startY = e.clientY - currentY;
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onStop);
+});
+
+function onMove(e) {
+  if (!isDragging) return;
+
+  const parentRect = parent.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+
+  // Calculate target position relative to parent
+  let targetX = e.clientX - startX;
+  let targetY = e.clientY - startY;
+
+  // CONSTRAINTS: Prevent moving outside parent boundaries
+  const maxX = parentRect.width - elRect.width;
+  const maxY = parentRect.height - elRect.height;
+
+  currentX = Math.max(0, Math.min(targetX, maxX));
+  currentY = Math.max(0, Math.min(targetY, maxY));
+
+  if (!rafId) {
+    rafId = requestAnimationFrame(updatePosition);
+  }
+}
+
+function updatePosition() {
+  el.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+  rafId = null;
+}
+
+function onStop() {
+  isDragging = false;
+  el.style.cursor = "grab";
+  document.removeEventListener("mousemove", onMove);
+  document.removeEventListener("mouseup", onStop);
+}
 
 //----------------------------------------------
 //Profile chip on Dashboard
