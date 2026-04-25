@@ -9,33 +9,49 @@
     <div class="container">
       <div class="sidebar">
         <div class="sidebar-logo">
-          <a href="dashboard.html"><div class="sidebar-logo"><span class="logo-mark">SS</span><h2>SaathiSync</h2></div></a>
+          <a href="dashboard.html"
+            ><div class="sidebar-logo">
+              <span class="logo-mark">SS</span>
+              <h2>SaathiSync</h2>
+            </div></a
+          >
         </div>
 
         <p class="sidebar-section-label">Menu</p>
         <a class="active" href="dashboard.html"
-          ><span class="nav-icon">◩</span><span>Dashboard</span></a>
+          ><span class="nav-icon">◩</span><span>Dashboard</span></a
+        >
         <a href="partners.html"
-          ><span class="nav-icon">◉</span><span>Study Partners</span></a>
+          ><span class="nav-icon">◉</span><span>Study Partners</span></a
+        >
         <a href="groups.html"
-          ><span class="nav-icon">◎</span><span>Groups</span></a>
+          ><span class="nav-icon">◎</span><span>Groups</span></a
+        >
         <a href="deadlines.html"
-          ><span class="nav-icon">◷</span><span>Deadlines</span></a>
+          ><span class="nav-icon">◷</span><span>Deadlines</span></a
+        >
         <a href="resources.html"
-          ><span class="nav-icon">▣</span><span>Resources</span></a>
+          ><span class="nav-icon">▣</span><span>Resources</span></a
+        >
         <a href="library.html"
-          ><span class="nav-icon">▤</span><span>Library</span></a>
+          ><span class="nav-icon">▤</span><span>Library</span></a
+        >
         <a href="bookmarks.html"
-          ><span class="nav-icon">▮</span><span>Bookmarks</span></a>
+          ><span class="nav-icon">▮</span><span>Bookmarks</span></a
+        >
         <p class="sidebar-section-label">General</p>
         <a href="sessions.html"
-          ><span class="nav-icon">◔</span><span>Study Sessions</span></a>
+          ><span class="nav-icon">◔</span><span>Study Sessions</span></a
+        >
         <a href="profile.html"
-          ><span class="nav-icon">◌</span><span>Profile</span></a>
+          ><span class="nav-icon">◌</span><span>Profile</span></a
+        >
         <a href="settings.html"
-          ><span class="nav-icon">◫</span><span>Settings</span></a>
+          ><span class="nav-icon">◫</span><span>Settings</span></a
+        >
         <a href="logout.html"
-          ><span class="nav-icon">↦</span><span>Logout</span></a>
+          ><span class="nav-icon">↦</span><span>Logout</span></a
+        >
 
         <div class="sidebar-promo">
           <img
@@ -129,36 +145,35 @@
             </div>
           </div>
 
-          <div class="card reminders-card">
-            <div class="section-head">
-              <h3>Upcoming Deadlines</h3>
-              <span class="badge-status pending">Pending</span>
-            </div>
-            <p id="welcomeMessage">Your study overview</p>
-            <div id="deadlinesList" class="grid">
-              <!-- Deadlines will be loaded here -->
+          <div class="card timer-card">
+            <h4>Focus Timer</h4>
+            <div class="timer-display">00:00:00</div>
+            <div class="timer-controls">
+              <button class="btn btn-start-control" type="button">Start</button>
+              <button class="btn btn-light-control" type="button">Pause</button>
+              <button class="btn btn-stop-control" type="button">Stop</button>
             </div>
           </div>
         </div>
 
         <div class="dashboard-row row-panels">
-          <div class="card team-card">
-            <h3>Team</h3>
-            <div class="team-member-row">
+          <div class="card group-card">
+            <h3>Groups</h3>
+            <div class="group-member-row">
               <span class="member-avatar">AJ</span>
               <div>
                 <strong>Ayesha J.</strong
                 ><small>Reviewing Linear Algebra notes</small>
               </div>
             </div>
-            <div class="team-member-row">
+            <div class="group-member-row">
               <span class="member-avatar">RM</span>
               <div>
                 <strong>Rohan M.</strong
                 ><small>Preparing for Physics quiz</small>
               </div>
             </div>
-            <div class="team-member-row">
+            <div class="group-member-row">
               <span class="member-avatar">TK</span>
               <div>
                 <strong>Tanvi K.</strong
@@ -210,40 +225,31 @@
           <h3>Upcoming Deadlines</h3>
           <div class="project-row">
             <span class="project-dot"></span
-            ><strong>Biology Midterm Prep</strong><small style="color: white;">Due in 2 days</small>
+            ><strong>Biology Midterm Prep</strong
+            ><small style="color: white">Due in 2 days</small>
           </div>
           <div class="project-row">
             <span class="project-dot"></span><strong>DSA Practice Sprint</strong
-            ><small style="color: white;">Due in 4 days</small>
+            ><small style="color: white">Due in 4 days</small>
           </div>
           <div class="project-row">
             <span class="project-dot"></span><strong>Database Lab Report</strong
-            ><small style="color: white;">Due in 1 week</small>
+            ><small style="color: white">Due in 1 week</small>
           </div>
           <div class="project-row">
             <span class="project-dot"></span
             ><strong>Economics Presentation</strong
-            ><small style="color: white;">Due in 10 days</small>
+            ><small style="color: white">Due in 10 days</small>
           </div>
           <div class="project-row">
             <span class="project-dot"></span><strong>AI Reading Notes</strong
-            ><small style="color: white;">Due in 2 weeks</small>
+            ><small style="color: white">Due in 2 weeks</small>
           </div>
           <div class="project-row">
             <span class="project-dot"></span
             ><strong>Group Revision Session</strong
-            ><small style="color: white;">Due in 3 weeks</small>
+            ><small style="color: white">Due in 3 weeks</small>
           </div>
-        </div>
-      </div>
-
-      <div class="card timer-card" id="floatingTimer">
-        <h4>Focus Timer</h4>
-        <div class="timer-display">00:00:00</div>
-        <div class="timer-controls">
-          <button class="btn btn-start-control" type="button">Start</button>
-          <button class="btn btn-light-control" type="button">Pause</button>
-          <button class="btn btn-stop-control" type="button">Stop</button>
         </div>
       </div>
     </div>

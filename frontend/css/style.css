@@ -26,6 +26,14 @@
   --muted: #6B7280;
   --gradient-color-box: linear-gradient(to left, #038131, #061d0f);
   --gradient-color-card: linear-gradient(to left, #038131, #ffffff);
+  --metallic-gradient-green:   background: linear-gradient(
+    135deg,
+    #0f3d2e,
+    #14532d,
+    #22c55e,
+    #166534,
+    #0b2f22
+  );
 }
 
 * {
@@ -564,7 +572,7 @@ textarea:focus {
 
 /*------------------------------------------------*/
 
-.team-member-row {
+.group-member-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -572,7 +580,7 @@ textarea:focus {
   border-bottom: 1px solid var(--color-border);
 }
 
-.team-member-row:last-child {
+.group-member-row:last-child {
   border-bottom: 0;
 }
 
@@ -588,14 +596,14 @@ textarea:focus {
   font-weight: 700;
 }
 
-.team-member-row strong {
+.group-member-row strong {
   display: block;
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-heading);
 }
 
-.team-member-row small {
+.group-member-row small {
   display: block;
   font-size: 12px;
   color: var(--color-text-muted);
@@ -1307,7 +1315,9 @@ textarea:focus {
 }
 
 .project-card{
-  background: var(--gradient-color-card);
+  /* background: var(--gradient-color-card); */
+  background: linear-gradient(to right, rgb(255, 255, 255), rgb(25, 147, 11), rgb(2, 32, 4));
+
 }
 
 #mainContainer{
