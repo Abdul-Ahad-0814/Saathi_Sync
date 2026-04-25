@@ -38,29 +38,34 @@ def update_profile(user_id):
 
     name = data.get('name')
     university = data.get('university')
+    email = data.get('email')
 
-    if not any([name, university]):
-        return jsonify({"error": "Provide at least name or university to update"}), 400
+    if not any([name, university, email]):
+        return jsonify({"error": "Provide at least one field to update"}), 400
 
     try:
         conn = get_connection()
         cur = conn.cursor()
 
-        if name and university:
-            cur.execute(
-                "UPDATE Users SET Name = %s, University = %s WHERE UserID = %s",
-                (name, university, user_id)
-            )
-        elif name:
-            cur.execute(
-                "UPDATE Users SET Name = %s WHERE UserID = %s",
-                (name, user_id)
-            )
-        elif university:
-            cur.execute(
-                "UPDATE Users SET University = %s WHERE UserID = %s",
-                (university, user_id)
-            )
+        fields = []
+        values = []
+
+        if name:
+            fields.append("Name = %s")
+            values.append(name)
+        if university:
+            fields.append("University = %s")
+            values.append(university)
+        if email:
+            fields.append("Email = %s")
+            values.append(email)
+
+        values.append(user_id)
+
+        cur.execute(
+            f"UPDATE Users SET {', '.join(fields)} WHERE UserID = %s",
+            tuple(values)
+        )
 
         conn.commit()
         cur.close()

@@ -80,6 +80,42 @@ def get_resources():
         return jsonify({"error": str(e)}), 500
 
 
+@resources_bp.route('/resources/user/<int:user_id>', methods=['GET'])
+def get_resources_by_user(user_id):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath
+            FROM Resources r
+            LEFT JOIN Subjects s ON r.SubjectID = s.SubjectID
+            LEFT JOIN Users u ON r.UploadedBy = u.UserID
+            WHERE r.UploadedBy = %s
+            ORDER BY r.ResourceID DESC
+        """, (user_id,))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        resources = []
+        for row in rows:
+            resources.append({
+                "resource_id": row[0],
+                "title": row[1],
+                "subject": row[2],
+                "type": row[3],
+                "uploaded_by": row[4],
+                "file_path": row[5]
+            })
+
+        return jsonify(resources), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── GET RESOURCES BY SUBJECT ───────────────────────────────
 @resources_bp.route('/resources/subject/<int:subject_id>', methods=['GET'])
 def get_resources_by_subject(subject_id):

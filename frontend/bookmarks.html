@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Bookmarks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -30,6 +31,25 @@
   </div>
 
   <div class="main">
+
+    <div class="topbar page-topbar">
+      <h1>Bookmarks</h1>
+    </div>
+
+    <div class="card">
+      <h3>Add Bookmark</h3>
+      <div class="bookmarks-form-grid">
+        <div class="form-group">
+          <label for="bookmarkResource">Resource</label>
+          <select id="bookmarkResource"></select>
+        </div>
+        <div class="form-group">
+          <label for="bookmarkTopic">Saved Topic</label>
+          <input id="bookmarkTopic" placeholder="Topic or quick note">
+        </div>
+      </div>
+      <button class="btn" onclick="addBookmark()">Add Bookmark</button>
+    </div>
 
     <div class="card">
       <h3>Saved Items</h3>

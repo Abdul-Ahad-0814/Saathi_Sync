@@ -58,6 +58,30 @@ def get_books():
         """)
 
         rows = cur.fetchall()
+
+        if len(rows) == 0:
+            default_books = [
+                ("Introduction to Algorithms", "Thomas H. Cormen", None, True),
+                ("Database System Concepts", "Abraham Silberschatz", None, True),
+                ("Operating System Concepts", "Abraham Silberschatz", None, True),
+                ("Discrete Mathematics and Its Applications", "Kenneth H. Rosen", None, True),
+                ("Computer Networks", "Andrew S. Tanenbaum", None, True),
+            ]
+
+            cur.executemany(
+                "INSERT INTO Books (Title, Author, SubjectID, IsAvailable) VALUES (%s, %s, %s, %s)",
+                default_books
+            )
+            conn.commit()
+
+            cur.execute("""
+                SELECT b.BookID, b.Title, b.Author, s.SubjectName, b.IsAvailable
+                FROM Books b
+                LEFT JOIN Subjects s ON b.SubjectID = s.SubjectID
+                ORDER BY b.Title ASC
+            """)
+            rows = cur.fetchall()
+
         cur.close()
         conn.close()
 

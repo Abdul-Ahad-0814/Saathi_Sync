@@ -25,6 +25,8 @@ def add_bookmark():
             (user_id, resource_id)
         )
         if cur.fetchone():
+            cur.close()
+            conn.close()
             return jsonify({"error": "Resource already bookmarked"}), 409
 
         cur.execute(

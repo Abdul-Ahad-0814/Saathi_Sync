@@ -62,37 +62,6 @@
 </div>
 
 <script src="js/app.js"></script>
-<script>
-  function showSignup() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('signupForm').style.display = 'block';
-  }
-
-  function showLogin() {
-    document.getElementById('signupForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
-  }
-
-  async function signup() {
-    const res = await fetch(API + "/signup", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        name: document.getElementById("signupName").value,
-        email: document.getElementById("signupEmail").value,
-        password: document.getElementById("signupPassword").value
-      })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      alert(data.message);
-      showLogin();
-    } else {
-      alert(data.error);
-    }
-  }
-</script>
 
 </body>
 </html>
