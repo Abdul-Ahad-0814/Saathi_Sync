@@ -84,8 +84,8 @@
             <div class="profile-chip" id="profileChip">
               <div class="avatar">SS</div>
               <div>
-                <strong>Saathi User</strong>
-                <small>student@saathi.app</small>
+                <strong id="dashboardChipName">Saathi User</strong>
+                <small id="dashboardChipEmail">student@saathi.app</small>
               </div>
             </div>
             <div class="profile-dropdown" id="profileDropdown">
@@ -99,23 +99,23 @@
         <div class="stats-grid">
           <div class="card stat-card stat-card-primary">
             <span class="stat-label">Total Hours</span>
-            <div class="stat-value">124</div>
-            <span class="trend-badge">▲ +12%</span>
+            <div class="stat-value" id="dashboardTotalHours">0</div>
+            <span class="trend-badge" id="dashboardTotalHoursTrend">Live</span>
           </div>
           <div class="card stat-card">
             <span class="stat-label">Active Projects</span>
-            <div class="stat-value">8</div>
-            <span class="trend-badge">▲ +3%</span>
+            <div class="stat-value" id="dashboardActiveProjects">0</div>
+            <span class="trend-badge" id="dashboardActiveProjectsTrend">Study Groups</span>
           </div>
           <div class="card stat-card">
             <span class="stat-label">Deadlines This Week</span>
-            <div class="stat-value">5</div>
-            <span class="trend-badge">▲ +1%</span>
+            <div class="stat-value" id="dashboardDeadlinesWeek">0</div>
+            <span class="trend-badge" id="dashboardDeadlinesWeekTrend">Upcoming</span>
           </div>
           <div class="card stat-card">
             <span class="stat-label">Completed Tasks</span>
-            <div class="stat-value">42</div>
-            <span class="trend-badge">▲ +8%</span>
+            <div class="stat-value" id="dashboardCompletedTasks">0</div>
+            <span class="trend-badge" id="dashboardCompletedTasksTrend">Sessions</span>
           </div>
         </div>
 
@@ -159,34 +159,14 @@
         <div class="dashboard-row row-panels">
           <div class="card group-card">
             <h3>Groups</h3>
-            <div class="group-member-row">
-              <span class="member-avatar">AJ</span>
-              <div>
-                <strong>Ayesha J.</strong
-                ><small>Reviewing Linear Algebra notes</small>
-              </div>
-            </div>
-            <div class="group-member-row">
-              <span class="member-avatar">RM</span>
-              <div>
-                <strong>Rohan M.</strong
-                ><small>Preparing for Physics quiz</small>
-              </div>
-            </div>
-            <div class="group-member-row">
-              <span class="member-avatar">TK</span>
-              <div>
-                <strong>Tanvi K.</strong
-                ><small>Summarizing research paper</small>
-              </div>
-            </div>
+            <div id="dashboardGroupsPreview"></div>
           </div>
 
           <div class="card progress-card">
             <h3>Progress</h3>
             <div class="donut-shell">
               <div class="donut-center">
-                <strong>78%</strong>
+                <strong id="dashboardProgressPercent">0%</strong>
                 <small>Completed</small>
               </div>
             </div>
@@ -223,50 +203,11 @@
 
         <div class="card project-card">
           <h3>Upcoming Deadlines</h3>
-          <div class="project-row">
-            <span class="project-dot"></span
-            ><strong>Biology Midterm Prep</strong
-            ><small style="color: white">Due in 2 days</small>
-          </div>
-          <div class="project-row">
-            <span class="project-dot"></span><strong>DSA Practice Sprint</strong
-            ><small style="color: white">Due in 4 days</small>
-          </div>
-          <div class="project-row">
-            <span class="project-dot"></span><strong>Database Lab Report</strong
-            ><small style="color: white">Due in 1 week</small>
-          </div>
-          <div class="project-row">
-            <span class="project-dot"></span
-            ><strong>Economics Presentation</strong
-            ><small style="color: white">Due in 10 days</small>
-          </div>
-          <div class="project-row">
-            <span class="project-dot"></span><strong>AI Reading Notes</strong
-            ><small style="color: white">Due in 2 weeks</small>
-          </div>
-          <div class="project-row">
-            <span class="project-dot"></span
-            ><strong>Group Revision Session</strong
-            ><small style="color: white">Due in 3 weeks</small>
-          </div>
+          <div id="dashboardUpcomingDeadlines"></div>
         </div>
       </div>
     </div>
 
     <script src="js/app.js"></script>
-    <script>
-      // Load user info
-      const userName = localStorage.getItem("user_name");
-      if (userName) {
-        document.getElementById("welcomeMessage").textContent =
-          `Welcome back, ${userName}! Here's your study overview.`;
-      }
-
-      // Load deadlines on page load
-      window.onload = function () {
-        loadDeadlines();
-      };
-    </script>
   </body>
 </html>

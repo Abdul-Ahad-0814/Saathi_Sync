@@ -826,6 +826,242 @@ function logout() {
   window.location.href = "index.html";
 }
 
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function updateDashboardBarHighlights(bars) {
+  bars.forEach((bar) => {
+    bar.classList.remove("bar-1", "bar-2", "bar-3");
+  });
+
+  const barData = bars.map((bar, index) => ({ index, height: parseFloat(bar.style.height || "0") }));
+  barData.sort((a, b) => b.height - a.height);
+
+  if (barData[0]) bars[barData[0].index].classList.add("bar-1");
+  if (barData[1]) bars[barData[1].index].classList.add("bar-2");
+  if (barData[2]) bars[barData[2].index].classList.add("bar-3");
+}
+
+function animateDashboardDonut(targetPercent) {
+  const donut = document.querySelector(".donut-shell");
+  const text = document.getElementById("dashboardProgressPercent") || document.querySelector(".donut-center strong");
+  if (!donut || !text) return;
+
+  const safeTarget = Math.max(0, Math.min(100, Math.round(targetPercent)));
+  const currentText = parseInt(text.textContent, 10);
+  const from = Number.isNaN(currentText) ? 0 : currentText;
+
+  if (from === safeTarget) {
+    donut.style.setProperty("--progress", `${safeTarget}%`);
+    text.textContent = `${safeTarget}%`;
+    return;
+  }
+
+  let value = from;
+  const step = from < safeTarget ? 1 : -1;
+  const interval = setInterval(() => {
+    if (value === safeTarget) {
+      clearInterval(interval);
+      return;
+    }
+    value += step;
+    donut.style.setProperty("--progress", `${value}%`);
+    text.textContent = `${value}%`;
+  }, 10);
+}
+
+function toDateOnly(value) {
+  const parts = String(value || "").split("-").map((n) => parseInt(n, 10));
+  if (parts.length < 3 || parts.some(Number.isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDueText(deadlineDate, today) {
+  const msInDay = 24 * 60 * 60 * 1000;
+  const deltaDays = Math.round((deadlineDate - today) / msInDay);
+
+  if (deltaDays < 0) return "Overdue";
+  if (deltaDays === 0) return "Due today";
+  if (deltaDays === 1) return "Due tomorrow";
+  return `Due in ${deltaDays} days`;
+}
+
+function hoursText(totalMinutes) {
+  const hours = (totalMinutes || 0) / 60;
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
+
+async function fetchArray(endpoint) {
+  try {
+    const res = await fetch(API + endpoint);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error(`Error loading ${endpoint}:`, err);
+    return [];
+  }
+}
+
+async function fetchObject(endpoint) {
+  try {
+    const res = await fetch(API + endpoint);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error(`Error loading ${endpoint}:`, err);
+    return null;
+  }
+}
+
+async function loadDashboardData() {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  const [sessions, groups, deadlines, resources, bookmarks, profile] = await Promise.all([
+    fetchArray(`/sessions/${userId}`),
+    fetchArray("/groups"),
+    fetchArray(`/deadlines/${userId}`),
+    fetchArray(`/resources/user/${userId}`),
+    fetchArray(`/bookmarks/${userId}`),
+    fetchObject(`/profile/${userId}`),
+  ]);
+
+  if (profile) {
+    setText("dashboardChipName", profile.name || localStorage.getItem("user_name") || "Saathi User");
+    setText("dashboardChipEmail", profile.email || "student@saathi.app");
+  } else {
+    setText("dashboardChipName", localStorage.getItem("user_name") || "Saathi User");
+  }
+
+  const totalMinutes = sessions.reduce((sum, session) => sum + (session.duration_minutes || 0), 0);
+  const totalHours = hoursText(totalMinutes);
+  setText("dashboardTotalHours", totalHours);
+
+  const today = startOfDay(new Date());
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() + 6);
+
+  const weekDeadlines = deadlines.filter((deadline) => {
+    const due = toDateOnly(deadline.due_date);
+    return due && due >= today && due <= weekEnd;
+  });
+
+  setText("dashboardActiveProjects", String(groups.length));
+  setText("dashboardDeadlinesWeek", String(weekDeadlines.length));
+  setText("dashboardCompletedTasks", String(sessions.length));
+
+  const last7Start = new Date(today);
+  last7Start.setDate(today.getDate() - 6);
+  const weekMinutes = sessions.reduce((sum, session) => {
+    const date = toDateOnly(session.date);
+    if (date && date >= last7Start && date <= today) {
+      return sum + (session.duration_minutes || 0);
+    }
+    return sum;
+  }, 0);
+
+  setText("dashboardTotalHoursTrend", `${hoursText(weekMinutes)}h this week`);
+  setText("dashboardActiveProjectsTrend", `${resources.length} resources`);
+  setText("dashboardDeadlinesWeekTrend", weekDeadlines.length ? "Upcoming" : "All clear");
+  setText("dashboardCompletedTasksTrend", `${bookmarks.length} bookmarks`);
+
+  const groupsPreview = document.getElementById("dashboardGroupsPreview");
+  if (groupsPreview) {
+    groupsPreview.innerHTML = "";
+    if (!groups.length) {
+      groupsPreview.innerHTML = '<p style="color:var(--muted);">No groups created yet.</p>';
+    } else {
+      groups.slice(0, 3).forEach((group) => {
+        const row = document.createElement("div");
+        row.className = "group-member-row";
+
+        const initials = (group.group_name || "G")
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0].toUpperCase())
+          .join("") || "G";
+
+        row.innerHTML = `
+          <span class="member-avatar">${initials}</span>
+          <div>
+            <strong>${group.group_name || "Untitled Group"}</strong>
+            <small>${group.subject ? `Subject: ${group.subject}` : "No subject tagged"}</small>
+          </div>
+        `;
+        groupsPreview.appendChild(row);
+      });
+    }
+  }
+
+  const upcomingContainer = document.getElementById("dashboardUpcomingDeadlines");
+  if (upcomingContainer) {
+    upcomingContainer.innerHTML = "";
+
+    const sorted = deadlines
+      .map((deadline) => ({ ...deadline, parsedDate: toDateOnly(deadline.due_date) }))
+      .filter((deadline) => deadline.parsedDate)
+      .sort((a, b) => a.parsedDate - b.parsedDate)
+      .slice(0, 6);
+
+    if (!sorted.length) {
+      upcomingContainer.innerHTML = '<p style="color:var(--muted);">No upcoming deadlines.</p>';
+    } else {
+      sorted.forEach((deadline) => {
+        const row = document.createElement("div");
+        row.className = "project-row";
+        row.innerHTML = `
+          <span class="project-dot"></span>
+          <strong>${deadline.title}</strong>
+          <small style="color: white">${formatDueText(deadline.parsedDate, today)}</small>
+        `;
+        upcomingContainer.appendChild(row);
+      });
+    }
+  }
+
+  const bars = Array.from(document.querySelectorAll(".chart-bars span"));
+  if (bars.length) {
+    const dailyMinutes = {};
+    sessions.forEach((session) => {
+      const key = String(session.date || "").slice(0, 10);
+      if (!key) return;
+      dailyMinutes[key] = (dailyMinutes[key] || 0) + (session.duration_minutes || 0);
+    });
+
+    const weekKeys = [];
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - offset);
+      weekKeys.push(d.toISOString().slice(0, 10));
+    }
+
+    const weekSeries = weekKeys.map((key) => dailyMinutes[key] || 0);
+    const maxMinutes = Math.max(...weekSeries, 0);
+
+    bars.forEach((bar, index) => {
+      const value = weekSeries[index] || 0;
+      const heightPct = maxMinutes ? Math.max(12, Math.round((value / maxMinutes) * 100)) : 12;
+      bar.style.height = `${heightPct}%`;
+      bar.title = `${Math.round((value / 60) * 10) / 10}h`;
+    });
+
+    updateDashboardBarHighlights(bars);
+  }
+
+  const weeklyHours = weekMinutes / 60;
+  const weeklyTarget = 14;
+  const progress = Math.round((weeklyHours / weeklyTarget) * 100);
+  animateDashboardDonut(Math.max(0, Math.min(100, progress)));
+}
+
 function initTimer() {
   const timer = document.querySelector(".timer-card");
   if (!timer) return;
@@ -904,31 +1140,6 @@ function initDashboardUI() {
       }
     });
   }
-
-  const bars = document.querySelectorAll(".chart-bars span");
-  if (bars.length) {
-    const barData = Array.from(bars).map((bar, index) => ({ index, height: parseFloat(bar.style.height || "0") }));
-    barData.sort((a, b) => b.height - a.height);
-    if (barData[0]) bars[barData[0].index].classList.add("bar-1");
-    if (barData[1]) bars[barData[1].index].classList.add("bar-2");
-    if (barData[2]) bars[barData[2].index].classList.add("bar-3");
-  }
-
-  const donut = document.querySelector(".donut-shell");
-  const text = document.querySelector(".donut-center strong");
-  if (donut && text) {
-    const target = 78;
-    let current = 0;
-    const interval = setInterval(() => {
-      if (current >= target) {
-        clearInterval(interval);
-        return;
-      }
-      current += 1;
-      donut.style.setProperty("--progress", current + "%");
-      text.innerText = current + "%";
-    }, 10);
-  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -938,12 +1149,13 @@ document.addEventListener("DOMContentLoaded", () => {
   initDashboardUI();
 
   if (page === "groups.html") loadGroups();
-  if (page === "deadlines.html" || page === "dashboard.html") loadDeadlines();
+  if (page === "deadlines.html") loadDeadlines();
   if (page === "resources.html") loadResources();
   if (page === "sessions.html") loadSessions();
   if (page === "profile.html") loadProfile();
   if (page === "settings.html") loadSettings();
   if (page === "library.html") loadBooks();
+  if (page === "dashboard.html") loadDashboardData();
   if (page === "bookmarks.html") {
     loadBookmarkResources();
     loadBookmarks();
