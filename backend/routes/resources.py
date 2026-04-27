@@ -13,6 +13,10 @@ def add_resource():
     resource_type = data.get('type')
     uploaded_by = data.get('user_id')
     file_path = data.get('file_path')
+    visibility = (data.get('visibility') or 'Private').strip().title()
+
+    if visibility not in ('Private', 'Public'):
+        visibility = 'Private'
 
     if not all([title, uploaded_by]):
         return jsonify({"error": "title and user_id are required"}), 400
@@ -30,8 +34,8 @@ def add_resource():
                 subject_id = subject[0]
 
         cur.execute(
-            "INSERT INTO Resources (Title, SubjectID, Type, UploadedBy, FilePath) VALUES (%s, %s, %s, %s, %s) RETURNING ResourceID",
-            (title, subject_id, resource_type, uploaded_by, file_path)
+            "INSERT INTO Resources (Title, SubjectID, Type, UploadedBy, FilePath, Visibility) VALUES (%s, %s, %s, %s, %s, %s) RETURNING ResourceID",
+            (title, subject_id, resource_type, uploaded_by, file_path, visibility)
         )
         resource_id = cur.fetchone()[0]
 
@@ -71,7 +75,8 @@ def get_resources():
                 "subject": row[2],
                 "type": row[3],
                 "uploaded_by": row[4],
-                "file_path": row[5]
+                    "file_path": row[5],
+                    "visibility": row[6] if len(row) > 6 else "Private"
             })
 
         return jsonify(resources), 200
@@ -87,7 +92,7 @@ def get_resources_by_user(user_id):
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath
+            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath, r.Visibility
             FROM Resources r
             LEFT JOIN Subjects s ON r.SubjectID = s.SubjectID
             LEFT JOIN Users u ON r.UploadedBy = u.UserID
@@ -107,7 +112,45 @@ def get_resources_by_user(user_id):
                 "subject": row[2],
                 "type": row[3],
                 "uploaded_by": row[4],
-                "file_path": row[5]
+                "file_path": row[5],
+                "visibility": row[6]
+            })
+
+        return jsonify(resources), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@resources_bp.route('/resources/public', methods=['GET'])
+def get_public_resources():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath, r.Visibility
+            FROM Resources r
+            LEFT JOIN Subjects s ON r.SubjectID = s.SubjectID
+            LEFT JOIN Users u ON r.UploadedBy = u.UserID
+            WHERE LOWER(COALESCE(r.Visibility, 'Private')) = 'public'
+            ORDER BY r.ResourceID DESC
+        """)
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        resources = []
+        for row in rows:
+            resources.append({
+                "resource_id": row[0],
+                "title": row[1],
+                "subject": row[2],
+                "type": row[3],
+                "uploaded_by": row[4],
+                "file_path": row[5],
+                "visibility": row[6]
             })
 
         return jsonify(resources), 200

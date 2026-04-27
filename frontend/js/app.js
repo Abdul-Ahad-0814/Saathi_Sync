@@ -169,12 +169,14 @@ async function createGroup() {
   }
 }
 
-async function loadGroups() {
+async function loadGroups(query = "") {
+  const userId = getUserId();
   const list = document.getElementById("groupsList");
   if (!list) return;
 
   try {
-    const res = await fetch(API + "/groups");
+    const endpoint = query ? `/groups?q=${encodeURIComponent(query)}` : "/groups";
+    const res = await fetch(API + endpoint);
     const data = await res.json();
     list.innerHTML = "";
 
@@ -190,11 +192,111 @@ async function loadGroups() {
         <h3>${group.group_name || "Untitled Group"}</h3>
         <p>${group.subject || "General"}</p>
         <small>Created by: ${group.created_by || "Unknown"}</small>
+        <small>Members: ${group.member_count || 0}</small>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="joinGroup(${group.group_id})">Join Group</button>
+          <button class="btn" onclick="viewGroup(${group.group_id}, '${(group.group_name || "Group").replace(/'/g, "&#39;")}')">View Group</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+
+    if (userId) {
+      loadJoinedGroups(userId);
+    }
+  } catch (err) {
+    console.error("Error loading groups:", err);
+  }
+}
+
+function searchGroups() {
+  const searchEl = document.getElementById("groupSearch");
+  loadGroups(searchEl ? searchEl.value.trim() : "");
+}
+
+async function joinGroup(groupId) {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  try {
+    const res = await fetch(API + `/groups/${groupId}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to join group");
+      return;
+    }
+
+    alert("Joined group successfully");
+    loadGroups((document.getElementById("groupSearch") || { value: "" }).value.trim());
+    loadJoinedGroups(userId);
+  } catch (err) {
+    alert("Error connecting to server");
+    console.error(err);
+  }
+}
+
+async function loadJoinedGroups(userId) {
+  const list = document.getElementById("joinedGroupsList");
+  if (!list || !userId) return;
+
+  try {
+    const res = await fetch(API + `/groups/joined/${userId}`);
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--muted);">No joined groups yet.</p>';
+      return;
+    }
+
+    data.forEach((group) => {
+      const item = document.createElement("div");
+      item.className = "card";
+      item.innerHTML = `
+        <h3>${group.group_name || "Untitled Group"}</h3>
+        <p>${group.subject || "General"}</p>
+        <small>Members: ${group.member_count || 0}</small>
+        <span class="badge-status completed">Joined</span>
       `;
       list.appendChild(item);
     });
   } catch (err) {
-    console.error("Error loading groups:", err);
+    console.error("Error loading joined groups:", err);
+  }
+}
+
+async function viewGroup(groupId, groupName) {
+  const details = document.getElementById("groupDetailsList");
+  if (!details) return;
+
+  try {
+    const res = await fetch(API + `/groups/${groupId}/members`);
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      details.innerHTML = `<p style="color:var(--muted);">No members found for ${groupName}.</p>`;
+      return;
+    }
+
+    const rows = data.map((member) => `
+      <div class="group-member-row">
+        <span class="member-avatar">${(member.name || "U").slice(0, 2).toUpperCase()}</span>
+        <div>
+          <strong>${member.name || "Unknown"}</strong>
+          <small>${member.university || "No university listed"}</small>
+        </div>
+      </div>
+    `).join("");
+
+    details.innerHTML = `<h3 style="margin-top:0;">${groupName}</h3>${rows}`;
+  } catch (err) {
+    console.error("Error viewing group:", err);
+    details.innerHTML = '<p style="color:var(--danger);">Could not load group details.</p>';
   }
 }
 
@@ -293,11 +395,13 @@ async function uploadResource() {
   const titleEl = document.getElementById("resourceTitle");
   const descEl = document.getElementById("resourceDesc");
   const fileEl = document.getElementById("resourceFile");
+  const visibilityEl = document.getElementById("resourceVisibility");
   if (!titleEl || !descEl) return;
 
   const title = titleEl.value.trim();
   const description = descEl.value.trim();
   const file_path = fileEl ? fileEl.value.trim() : "";
+  const visibility = visibilityEl ? visibilityEl.value : "Private";
 
   if (!title) {
     alert("Title is required");
@@ -313,6 +417,7 @@ async function uploadResource() {
         user_id: userId,
         type: "Notes",
         file_path: file_path || description,
+        visibility,
       }),
     });
     const data = await res.json();
@@ -326,6 +431,7 @@ async function uploadResource() {
     titleEl.value = "";
     descEl.value = "";
     if (fileEl) fileEl.value = "";
+    if (visibilityEl) visibilityEl.value = "Private";
     loadResources();
   } catch (err) {
     alert("Error connecting to server");
@@ -337,8 +443,11 @@ async function loadResources() {
   const list = document.getElementById("resourcesList");
   if (!list) return;
 
+  const userId = getUserId();
+  if (!userId) return;
+
   try {
-    const res = await fetch(API + "/resources");
+    const res = await fetch(API + `/resources/user/${userId}`);
     const data = await res.json();
     list.innerHTML = "";
 
@@ -354,7 +463,8 @@ async function loadResources() {
         <h3>${resource.title}</h3>
         <p>Subject: ${resource.subject || "General"}</p>
         <p>Type: ${resource.type || "Notes"}</p>
-        ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" class="btn">Open</a>` : ""}
+        <p>Visibility: ${resource.visibility || "Private"}</p>
+        ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" rel="noopener noreferrer" class="btn">Open</a>` : ""}
         <small>Uploaded by: ${resource.uploaded_by || "Unknown"}</small>
       `;
       list.appendChild(item);
@@ -500,6 +610,13 @@ async function loadProfile() {
 
     const profileData = await profileRes.json();
     const subjectData = await subjectRes.json();
+    const [sessions, deadlines, resources, bookmarks, groups] = await Promise.all([
+      fetchArray(`/sessions/${userId}`),
+      fetchArray(`/deadlines/${userId}`),
+      fetchArray(`/resources/user/${userId}`),
+      fetchArray(`/bookmarks/${userId}`),
+      fetchArray("/groups"),
+    ]);
 
     if (profileRes.ok) {
       const nameEl = document.getElementById("name");
@@ -514,6 +631,12 @@ async function loadProfile() {
       if (displayEmail) displayEmail.textContent = profileData.email || "";
       if (displayRole) displayRole.textContent = profileData.role || "Student";
     }
+
+    setText("profileSessionCount", String(sessions.length));
+    setText("profileDeadlineCount", String(deadlines.length));
+    setText("profileResourceCount", String(resources.length));
+    setText("profileBookmarkCount", String(bookmarks.length));
+    setText("profileGroupCount", String(groups.length));
 
     if (subjectRes.ok && Array.isArray(subjectData) && subjectData.length) {
       const subjectEl = document.getElementById("subject");
@@ -550,6 +673,7 @@ async function saveSettings() {
       return;
     }
 
+    localStorage.setItem("user_name", payload.name || localStorage.getItem("user_name") || "User");
     alert("Settings saved");
   } catch (err) {
     alert("Error connecting to server");
@@ -557,8 +681,56 @@ async function saveSettings() {
   }
 }
 
+async function changePassword() {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  const newPasswordEl = document.getElementById("newPassword");
+  const confirmPasswordEl = document.getElementById("confirmPassword");
+  if (!newPasswordEl || !confirmPasswordEl) return;
+
+  const newPassword = newPasswordEl.value;
+  const confirmPassword = confirmPasswordEl.value;
+
+  if (!newPassword || !confirmPassword) {
+    alert("New password and confirm password are required");
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    alert("Password must be at least 8 characters");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  try {
+    const res = await fetch(API + `/profile/${userId}/password`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to update password");
+      return;
+    }
+
+    newPasswordEl.value = "";
+    confirmPasswordEl.value = "";
+    alert("Password updated successfully");
+  } catch (err) {
+    alert("Error connecting to server");
+    console.error(err);
+  }
+}
+
 function resetSettings() {
-  const fields = ["settingsName", "settingsEmail", "settingsTimezone", "settingsMode"];
+  const fields = ["settingsName", "settingsEmail", "settingsTimezone", "settingsMode", "newPassword", "confirmPassword"];
   fields.forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -631,17 +803,16 @@ async function loadBooks() {
 }
 
 async function loadLibraryResources() {
-  const userId = getUserId();
   const list = document.getElementById("libraryResourcesList");
-  if (!userId || !list) return;
+  if (!list) return;
 
   try {
-    const res = await fetch(API + "/resources/user/" + userId);
+    const res = await fetch(API + "/resources/public");
     const data = await res.json();
     list.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<p style="color:var(--muted);">No uploaded resources yet.</p>';
+      list.innerHTML = '<p style="color:var(--muted);">No public resources yet.</p>';
       return;
     }
 
@@ -650,8 +821,11 @@ async function loadLibraryResources() {
       item.className = "card";
       item.innerHTML = `
         <h3>${resource.title}</h3>
-        <p>${resource.type || "Notes"}</p>
-        ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" class="btn">Open</a>` : ""}
+        <p>Subject: ${resource.subject || "General"}</p>
+        <p>Type: ${resource.type || "Notes"}</p>
+        <p>Visibility: ${resource.visibility || "Public"}</p>
+        <small>Uploaded by: ${resource.uploaded_by || "Unknown"}</small>
+        ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" rel="noopener noreferrer" class="btn">Open</a>` : ""}
       `;
       list.appendChild(item);
     });
@@ -664,13 +838,23 @@ async function findPartners() {
   const userId = ensureLoggedIn();
   if (!userId) return;
 
-  const subjectFilter = (document.getElementById("subject") || { value: "" }).value.trim().toLowerCase();
-  const availability = (document.getElementById("time") || { value: "" }).value.trim();
+  const subjectFilter = (document.getElementById("subject") || { value: "" }).value.trim();
+  const universityFilter = (document.getElementById("university") || { value: "" }).value.trim();
+  const availabilityDate = (document.getElementById("availabilityDate") || { value: "" }).value.trim();
+  const availabilityTime = (document.getElementById("availabilityTime") || { value: "" }).value.trim();
   const list = document.getElementById("results");
   if (!list) return;
 
   try {
-    const res = await fetch(API + "/partners/" + userId);
+    const params = new URLSearchParams();
+    const query = [subjectFilter, universityFilter, availabilityDate, availabilityTime].filter(Boolean).join(" ");
+    if (query) params.set("q", query);
+    if (subjectFilter) params.set("subject", subjectFilter);
+    if (universityFilter) params.set("university", universityFilter);
+    if (availabilityDate) params.set("availability_date", availabilityDate);
+    if (availabilityTime) params.set("availability_time", availabilityTime);
+
+    const res = await fetch(API + `/partners/${userId}${params.toString() ? `?${params.toString()}` : ""}`);
     const data = await res.json();
     list.innerHTML = "";
 
@@ -679,8 +863,9 @@ async function findPartners() {
       return;
     }
 
+    const normalizedSubject = subjectFilter.toLowerCase();
     const filtered = data.filter((partner) => {
-      const subjectMatch = !subjectFilter || (partner.subject || "").toLowerCase().includes(subjectFilter);
+      const subjectMatch = !normalizedSubject || (partner.subject || "").toLowerCase().includes(normalizedSubject);
       return subjectMatch;
     });
 
@@ -695,8 +880,10 @@ async function findPartners() {
       item.innerHTML = `
         <h3>${partner.name}</h3>
         <p>University: ${partner.university || "N/A"}</p>
-        <p>Subject: ${partner.subject || "General"}</p>
-        ${availability ? `<small>Preferred Time: ${availability}</small>` : ""}
+        <p>Subjects: ${partner.subject || "General"}</p>
+        <p>Availability Date: ${partner.availability_date || availabilityDate || "Flexible"}</p>
+        <p>Availability Time: ${partner.availability_time || availabilityTime || "Flexible"}</p>
+        <button class="btn btn-secondary" onclick="connectPartner(${partner.user_id})">Add Partner</button>
       `;
       list.appendChild(item);
     });
@@ -705,13 +892,78 @@ async function findPartners() {
   }
 }
 
+async function connectPartner(partnerId) {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  try {
+    const res = await fetch(API + "/partners/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, partner_id: partnerId }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to connect partner");
+      return;
+    }
+
+    alert("Partner added to current partners");
+    loadCurrentPartners();
+  } catch (err) {
+    console.error("Error connecting partner:", err);
+  }
+}
+
+async function loadCurrentPartners() {
+  const userId = getUserId();
+  const list = document.getElementById("currentPartners");
+  if (!userId || !list) return;
+
+  try {
+    const res = await fetch(API + `/partners/${userId}/current`);
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<p style="color:var(--muted);">No current partners yet.</p>';
+      return;
+    }
+
+    data.forEach((partner) => {
+      const item = document.createElement("div");
+      item.className = "card";
+      item.innerHTML = `
+        <h3>${partner.name}</h3>
+        <p>University: ${partner.university || "N/A"}</p>
+        <p>Subjects: ${partner.subject || "General"}</p>
+        <small>Connected On: ${partner.connected_on || "-"}</small>
+      `;
+      list.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Error loading current partners:", err);
+  }
+}
+
 async function loadBookmarkResources() {
   const select = document.getElementById("bookmarkResource");
   if (!select) return;
 
   try {
-    const res = await fetch(API + "/resources");
-    const data = await res.json();
+    const userId = getUserId();
+    const [publicRes, ownRes] = await Promise.all([
+      fetch(API + "/resources/public").then((res) => (res.ok ? res.json() : [])),
+      userId ? fetch(API + `/resources/user/${userId}`).then((res) => (res.ok ? res.json() : [])) : Promise.resolve([]),
+    ]);
+
+    const seen = new Set();
+    const data = [...publicRes, ...ownRes].filter((resource) => {
+      if (seen.has(resource.resource_id)) return false;
+      seen.add(resource.resource_id);
+      return true;
+    });
 
     select.innerHTML = "";
     if (!Array.isArray(data) || data.length === 0) {
@@ -1160,5 +1412,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadBookmarkResources();
     loadBookmarks();
   }
-  if (page === "partners.html") findPartners();
+  if (page === "partners.html") {
+    findPartners();
+    loadCurrentPartners();
+  }
 });

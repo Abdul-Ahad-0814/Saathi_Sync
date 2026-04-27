@@ -45,9 +45,9 @@
     </div>
 
     <div class="profile-stats-row">
-      <div class="card mini-stat-card"><span class="stat-label">Sessions</span><strong>36</strong></div>
-      <div class="card mini-stat-card"><span class="stat-label">Deadlines Met</span><strong>22</strong></div>
-      <div class="card mini-stat-card"><span class="stat-label">Resources Uploaded</span><strong>14</strong></div>
+      <div class="card mini-stat-card"><span class="stat-label">Sessions</span><strong id="profileSessionCount">0</strong></div>
+      <div class="card mini-stat-card"><span class="stat-label">Deadlines</span><strong id="profileDeadlineCount">0</strong></div>
+      <div class="card mini-stat-card"><span class="stat-label">Resources Uploaded</span><strong id="profileResourceCount">0</strong></div>
     </div>
 
     <div class="card form-card profile-form-card">
@@ -67,6 +67,20 @@
         </div>
       </div>
       <button class="btn" onclick="updateProfile()">Save</button>
+    </div>
+
+    <div class="card form-card profile-form-card">
+      <h3>Profile Activity</h3>
+      <div class="profile-form-grid">
+        <div class="form-group">
+          <label>Bookmarks</label>
+          <input id="profileBookmarkCount" readonly value="0">
+        </div>
+        <div class="form-group">
+          <label>Groups</label>
+          <input id="profileGroupCount" readonly value="0">
+        </div>
+      </div>
     </div>
 
   </div>

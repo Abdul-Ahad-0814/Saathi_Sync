@@ -76,6 +76,23 @@
       <div class="settings-check-row"><input id="notifySessions" type="checkbox" checked><label for="notifySessions">Session updates</label></div>
       <div class="settings-check-row"><input id="notifyResources" type="checkbox"><label for="notifyResources">Resource activity</label></div>
     </div>
+
+    <div class="card settings-card">
+      <h3>Change Password</h3>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label for="newPassword">New Password</label>
+          <input id="newPassword" type="password" placeholder="Enter new password">
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input id="confirmPassword" type="password" placeholder="Confirm new password">
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn" onclick="changePassword()">Update Password</button>
+      </div>
+    </div>
   </div>
 
 </div>

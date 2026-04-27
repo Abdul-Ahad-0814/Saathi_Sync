@@ -75,3 +75,31 @@ def update_profile(user_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@profile_bp.route('/profile/<int:user_id>/password', methods=['PUT'])
+def update_password(user_id):
+    data = request.json
+
+    new_password = data.get('new_password')
+
+    if not new_password:
+        return jsonify({"error": "new_password is required"}), 400
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(
+            "UPDATE Users SET Password = %s WHERE UserID = %s",
+            (new_password, user_id)
+        )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Password updated successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

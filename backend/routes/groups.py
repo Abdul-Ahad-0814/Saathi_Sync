@@ -53,16 +53,29 @@ def create_group():
 # ─── GET ALL GROUPS ─────────────────────────────────────────
 @groups_bp.route('/groups', methods=['GET'])
 def get_groups():
+    query = request.args.get('q', '').strip()
+
     try:
         conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute("""
-            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy
+        params = []
+        where_clause = ""
+        if query:
+            where_clause = "WHERE g.GroupName ILIKE %s OR s.SubjectName ILIKE %s OR u.Name ILIKE %s"
+            params = [f'%{query}%', f'%{query}%', f'%{query}%']
+
+        cur.execute(f"""
+            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy,
+                   COUNT(gm.UserID) as MemberCount
             FROM StudyGroups g
             LEFT JOIN Subjects s ON g.SubjectID = s.SubjectID
             LEFT JOIN Users u ON g.CreatedBy = u.UserID
-        """)
+            LEFT JOIN GroupMembers gm ON g.GroupID = gm.GroupID
+            {where_clause}
+            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name
+            ORDER BY g.GroupName ASC
+        """, params)
 
         rows = cur.fetchall()
         cur.close()
@@ -74,7 +87,47 @@ def get_groups():
                 "group_id": row[0],
                 "group_name": row[1],
                 "subject": row[2],
-                "created_by": row[3]
+                "created_by": row[3],
+                "member_count": row[4]
+            })
+
+        return jsonify(groups), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@groups_bp.route('/groups/joined/<int:user_id>', methods=['GET'])
+def get_joined_groups(user_id):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy,
+                   COUNT(gm_all.UserID) as MemberCount
+            FROM GroupMembers gm
+            JOIN StudyGroups g ON gm.GroupID = g.GroupID
+            LEFT JOIN Subjects s ON g.SubjectID = s.SubjectID
+            LEFT JOIN Users u ON g.CreatedBy = u.UserID
+            LEFT JOIN GroupMembers gm_all ON g.GroupID = gm_all.GroupID
+            WHERE gm.UserID = %s
+            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name
+            ORDER BY g.GroupName ASC
+        """, (user_id,))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        groups = []
+        for row in rows:
+            groups.append({
+                "group_id": row[0],
+                "group_name": row[1],
+                "subject": row[2],
+                "created_by": row[3],
+                "member_count": row[4]
             })
 
         return jsonify(groups), 200
@@ -102,6 +155,8 @@ def join_group(group_id):
             (group_id, user_id)
         )
         if cur.fetchone():
+            cur.close()
+            conn.close()
             return jsonify({"error": "Already a member of this group"}), 409
 
         cur.execute(

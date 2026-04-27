@@ -11,6 +11,7 @@ from routes.bookmarks import bookmarks_bp
 from routes.sessions import sessions_bp
 from routes.profile import profile_bp
 from routes.admin import admin_bp
+from utils.db import ensure_schema
 
 app = Flask(__name__)
 CORS(app)
@@ -26,6 +27,8 @@ app.register_blueprint(bookmarks_bp)
 app.register_blueprint(sessions_bp)
 app.register_blueprint(profile_bp)
 app.register_blueprint(admin_bp)
+
+ensure_schema()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
