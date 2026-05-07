@@ -108,7 +108,7 @@ def get_current_partners(user_id):
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT u.UserID, u.Name, u.University,
+            SELECT u.UserID, u.Name, u.Email, u.University,
                    COALESCE(string_agg(DISTINCT s.SubjectName, ', ' ORDER BY s.SubjectName), '') AS Subjects,
                    sp.ConnectedOn
             FROM StudyPartners sp
@@ -116,7 +116,7 @@ def get_current_partners(user_id):
             LEFT JOIN UserSubjects us ON u.UserID = us.UserID
             LEFT JOIN Subjects s ON us.SubjectID = s.SubjectID
             WHERE sp.UserID = %s
-            GROUP BY u.UserID, u.Name, u.University, sp.ConnectedOn
+            GROUP BY u.UserID, u.Name, u.Email, u.University, sp.ConnectedOn
             ORDER BY u.Name ASC
         """, (user_id,))
 
@@ -129,9 +129,10 @@ def get_current_partners(user_id):
             partners.append({
                 "user_id": row[0],
                 "name": row[1],
-                "university": row[2],
-                "subject": row[3],
-                "connected_on": str(row[4]) if row[4] else None
+                "email": row[2],
+                "university": row[3],
+                "subject": row[4],
+                "connected_on": str(row[5]) if row[5] else None
             })
 
         return jsonify(partners), 200

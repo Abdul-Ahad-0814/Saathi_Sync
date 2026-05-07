@@ -13,6 +13,7 @@ def add_deadline():
     subject_name = data.get('subject_name')
     due_date = data.get('due_date')
     priority = data.get('priority', 'Medium')
+    status = data.get('status', 'Pending')
 
     if not all([user_id, title, due_date]):
         return jsonify({"error": "user_id, title and due_date are required"}), 400
@@ -30,8 +31,8 @@ def add_deadline():
                 subject_id = subject[0]
 
         cur.execute(
-            "INSERT INTO Deadlines (UserID, Title, SubjectID, DueDate, Priority) VALUES (%s, %s, %s, %s, %s) RETURNING DeadlineID",
-            (user_id, title, subject_id, due_date, priority)
+            "INSERT INTO Deadlines (UserID, Title, SubjectID, DueDate, Priority, Status) VALUES (%s, %s, %s, %s, %s, %s) RETURNING DeadlineID",
+            (user_id, title, subject_id, due_date, priority, status)
         )
         deadline_id = cur.fetchone()[0]
 
@@ -48,17 +49,32 @@ def add_deadline():
 # ─── GET USER DEADLINES ─────────────────────────────────────
 @deadlines_bp.route('/deadlines/<int:user_id>', methods=['GET'])
 def get_deadlines(user_id):
+    priority_filter = request.args.get('priority')
+    status_filter = request.args.get('status')
+
     try:
         conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute("""
-            SELECT d.DeadlineID, d.Title, s.SubjectName, d.DueDate, d.Priority
+        query = """
+            SELECT d.DeadlineID, d.Title, s.SubjectName, d.DueDate, d.Priority, d.Status
             FROM Deadlines d
             LEFT JOIN Subjects s ON d.SubjectID = s.SubjectID
             WHERE d.UserID = %s
-            ORDER BY d.DueDate ASC
-        """, (user_id,))
+        """
+        params = [user_id]
+
+        if priority_filter and priority_filter != 'All Priorities':
+            query += " AND d.Priority = %s"
+            params.append(priority_filter)
+
+        if status_filter and status_filter != 'All Statuses':
+            query += " AND d.Status = %s"
+            params.append(status_filter)
+
+        query += " ORDER BY d.DueDate ASC"
+
+        cur.execute(query, params)
 
         rows = cur.fetchall()
         cur.close()
@@ -71,7 +87,8 @@ def get_deadlines(user_id):
                 "title": row[1],
                 "subject": row[2],
                 "due_date": str(row[3]),
-                "priority": row[4]
+                "priority": row[4],
+                "status": row[5]
             })
 
         return jsonify(deadlines), 200

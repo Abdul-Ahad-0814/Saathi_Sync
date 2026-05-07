@@ -306,10 +306,14 @@ async function addDeadline() {
 
   const titleEl = document.getElementById("title");
   const dateEl = document.getElementById("date");
-  if (!titleEl || !dateEl) return;
+  const priorityEl = document.getElementById("priority");
+  const statusEl = document.getElementById("status");
+  if (!titleEl || !dateEl || !priorityEl || !statusEl) return;
 
   const title = titleEl.value.trim();
   const due_date = dateEl.value;
+  const priority = priorityEl.value;
+  const status = statusEl.value;
   if (!title || !due_date) {
     alert("Title and date are required");
     return;
@@ -319,7 +323,7 @@ async function addDeadline() {
     const res = await fetch(API + "/deadlines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, due_date, user_id: userId, priority: "Medium" }),
+      body: JSON.stringify({ title, due_date, user_id: userId, priority, status }),
     });
     const data = await res.json();
 
@@ -338,13 +342,19 @@ async function addDeadline() {
   }
 }
 
-async function loadDeadlines() {
+async function loadDeadlines(priority = null, status = null) {
   const userId = getUserId();
   const list = document.getElementById("deadlinesList");
   if (!userId || !list) return;
 
+  let url = API + "/deadlines/" + userId;
+  const params = [];
+  if (priority && priority !== 'All Priorities') params.push(`priority=${encodeURIComponent(priority)}`);
+  if (status && status !== 'All Statuses') params.push(`status=${encodeURIComponent(status)}`);
+  if (params.length) url += '?' + params.join('&');
+
   try {
-    const res = await fetch(API + "/deadlines/" + userId);
+    const res = await fetch(url);
     const data = await res.json();
     list.innerHTML = "";
 
@@ -354,13 +364,13 @@ async function loadDeadlines() {
     }
 
     data.forEach((deadline) => {
-      const item = document.createElement("div");
-      item.className = "card";
+      const item = document.createElement("tr");
       item.innerHTML = `
-        <h3>${deadline.title}</h3>
-        <p>Due: ${deadline.due_date}</p>
-        <p>Priority: ${deadline.priority || "Medium"}</p>
-        <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+        <td>${deadline.title}</td>
+        <td>${deadline.due_date}</td>
+        <td>${deadline.priority || "Medium"}</td>
+        <td>${deadline.status || "Pending"}</td>
+        <td><button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button></td>
       `;
       list.appendChild(item);
     });
@@ -464,13 +474,37 @@ async function loadResources() {
         <p>Subject: ${resource.subject || "General"}</p>
         <p>Type: ${resource.type || "Notes"}</p>
         <p>Visibility: ${resource.visibility || "Private"}</p>
-        ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" rel="noopener noreferrer" class="btn">Open</a>` : ""}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;">
+          ${resource.file_path ? `<a href="${resource.file_path}" target="_blank" rel="noopener noreferrer" class="btn">Open</a>` : ""}
+          <button class="btn btn-danger" onclick="deleteResource(${resource.resource_id})">Delete</button>
+        </div>
         <small>Uploaded by: ${resource.uploaded_by || "Unknown"}</small>
       `;
       list.appendChild(item);
     });
   } catch (err) {
     console.error("Error loading resources:", err);
+  }
+}
+
+async function deleteResource(resourceId) {
+  if (!confirm("Delete this resource? This action cannot be undone.")) return;
+
+  try {
+    const res = await fetch(API + `/resources/${resourceId}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "Failed to delete resource");
+      return;
+    }
+
+    alert("Resource deleted successfully");
+    loadResources();
+  } catch (err) {
+    alert("Error connecting to server");
+    console.error(err);
   }
 }
 
@@ -615,7 +649,7 @@ async function loadProfile() {
       fetchArray(`/deadlines/${userId}`),
       fetchArray(`/resources/user/${userId}`),
       fetchArray(`/bookmarks/${userId}`),
-      fetchArray("/groups"),
+      fetchArray(`/groups/joined/${userId}`),
     ]);
 
     if (profileRes.ok) {
@@ -653,11 +687,17 @@ async function saveSettings() {
 
   const nameEl = document.getElementById("settingsName");
   const emailEl = document.getElementById("settingsEmail");
+  const notifyDeadlinesEl = document.getElementById("notifyDeadlines");
+  const notifySessionsEl = document.getElementById("notifySessions");
+  const notifyResourcesEl = document.getElementById("notifyResources");
   if (!nameEl || !emailEl) return;
 
   const payload = {
     name: nameEl.value.trim(),
     email: emailEl.value.trim(),
+    notify_deadlines: notifyDeadlinesEl ? notifyDeadlinesEl.checked : false,
+    notify_sessions: notifySessionsEl ? notifySessionsEl.checked : false,
+    notify_resources: notifyResourcesEl ? notifyResourcesEl.checked : false,
   };
 
   try {
@@ -674,7 +714,7 @@ async function saveSettings() {
     }
 
     localStorage.setItem("user_name", payload.name || localStorage.getItem("user_name") || "User");
-    alert("Settings saved");
+    alert("Settings saved. Notifications will be sent to your email.");
   } catch (err) {
     alert("Error connecting to server");
     console.error(err);
@@ -759,8 +799,15 @@ async function loadSettings() {
 
     const nameEl = document.getElementById("settingsName");
     const emailEl = document.getElementById("settingsEmail");
+    const notifyDeadlinesEl = document.getElementById("notifyDeadlines");
+    const notifySessionsEl = document.getElementById("notifySessions");
+    const notifyResourcesEl = document.getElementById("notifyResources");
+
     if (nameEl) nameEl.value = data.name || "";
     if (emailEl) emailEl.value = data.email || "";
+    if (notifyDeadlinesEl) notifyDeadlinesEl.checked = data.notify_deadlines !== false;
+    if (notifySessionsEl) notifySessionsEl.checked = data.notify_sessions !== false;
+    if (notifyResourcesEl) notifyResourcesEl.checked = data.notify_resources === true;
   } catch (err) {
     console.error("Error loading settings:", err);
   }
@@ -839,7 +886,6 @@ async function findPartners() {
   if (!userId) return;
 
   const subjectFilter = (document.getElementById("subject") || { value: "" }).value.trim();
-  const universityFilter = (document.getElementById("university") || { value: "" }).value.trim();
   const availabilityDate = (document.getElementById("availabilityDate") || { value: "" }).value.trim();
   const availabilityTime = (document.getElementById("availabilityTime") || { value: "" }).value.trim();
   const list = document.getElementById("results");
@@ -847,10 +893,9 @@ async function findPartners() {
 
   try {
     const params = new URLSearchParams();
-    const query = [subjectFilter, universityFilter, availabilityDate, availabilityTime].filter(Boolean).join(" ");
+    const query = [subjectFilter, availabilityDate, availabilityTime].filter(Boolean).join(" ");
     if (query) params.set("q", query);
     if (subjectFilter) params.set("subject", subjectFilter);
-    if (universityFilter) params.set("university", universityFilter);
     if (availabilityDate) params.set("availability_date", availabilityDate);
     if (availabilityTime) params.set("availability_time", availabilityTime);
 
@@ -865,7 +910,7 @@ async function findPartners() {
 
     const normalizedSubject = subjectFilter.toLowerCase();
     const filtered = data.filter((partner) => {
-      const subjectMatch = !normalizedSubject || (partner.subject || "").toLowerCase().includes(normalizedSubject);
+      const subjectMatch = !normalizedSubject || (partner.subjects || "").toLowerCase().includes(normalizedSubject);
       return subjectMatch;
     });
 
@@ -880,7 +925,7 @@ async function findPartners() {
       item.innerHTML = `
         <h3>${partner.name}</h3>
         <p>University: ${partner.university || "N/A"}</p>
-        <p>Subjects: ${partner.subject || "General"}</p>
+        <p>Subjects: ${partner.subjects || "General"}</p>
         <p>Availability Date: ${partner.availability_date || availabilityDate || "Flexible"}</p>
         <p>Availability Time: ${partner.availability_time || availabilityTime || "Flexible"}</p>
         <button class="btn btn-secondary" onclick="connectPartner(${partner.user_id})">Add Partner</button>
@@ -936,6 +981,7 @@ async function loadCurrentPartners() {
       item.className = "card";
       item.innerHTML = `
         <h3>${partner.name}</h3>
+        <p>Email: ${partner.email}</p>
         <p>University: ${partner.university || "N/A"}</p>
         <p>Subjects: ${partner.subject || "General"}</p>
         <small>Connected On: ${partner.connected_on || "-"}</small>
@@ -1080,7 +1126,12 @@ function logout() {
 
 function setText(id, value) {
   const el = document.getElementById(id);
-  if (el) el.textContent = value;
+  if (!el) return;
+  if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+    el.value = value;
+  } else {
+    el.textContent = value;
+  }
 }
 
 function updateDashboardBarHighlights(bars) {
@@ -1350,6 +1401,15 @@ function initTimer() {
     interval = setInterval(updateDisplay, 1000);
   }
 
+  function updateButtonStates() {
+    const isRunning = localStorage.getItem("timerRunning") === "true";
+    startBtn.disabled = isRunning;
+    pauseBtn.disabled = !isRunning;
+    stopBtn.disabled = false;
+  }
+
+  updateButtonStates();
+
   if (localStorage.getItem("timerRunning") === "true") runTimer();
   else updateDisplay();
 
@@ -1360,12 +1420,14 @@ function initTimer() {
     localStorage.setItem("timerRunning", "true");
     timer.classList.add("show");
     runTimer();
+    updateButtonStates();
   });
 
   pauseBtn.addEventListener("click", () => {
     clearInterval(interval);
     interval = null;
     localStorage.setItem("timerRunning", "false");
+    updateButtonStates();
   });
 
   stopBtn.addEventListener("click", () => {
@@ -1375,6 +1437,7 @@ function initTimer() {
     localStorage.removeItem("timerRunning");
     display.innerText = "00:00:00";
     timer.classList.remove("show");
+    updateButtonStates();
   });
 }
 

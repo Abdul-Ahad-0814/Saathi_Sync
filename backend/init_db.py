@@ -1,18 +1,30 @@
-import sqlite3
+import psycopg2
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def init_db():
-    conn = sqlite3.connect('saathisync.db')
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
     cur = conn.cursor()
 
     # Create Users table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS Users (
-            UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Name TEXT NOT NULL,
-            Email TEXT UNIQUE NOT NULL,
-            Password TEXT NOT NULL,
-            University TEXT,
-            Role TEXT DEFAULT 'Student'
+            UserID SERIAL PRIMARY KEY,
+            Name VARCHAR(100) NOT NULL,
+            Email VARCHAR(100) UNIQUE NOT NULL,
+            Password VARCHAR(255) NOT NULL,
+            University VARCHAR(150),
+            Role VARCHAR(10) CHECK (Role IN ('Student', 'Admin')) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 

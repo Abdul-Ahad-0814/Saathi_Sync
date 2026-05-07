@@ -20,13 +20,10 @@ def ensure_schema():
     cur = conn.cursor()
 
     cur.execute("""
-        ALTER TABLE Resources
-        ADD COLUMN IF NOT EXISTS Visibility VARCHAR(10) DEFAULT 'Private'
-    """)
-    cur.execute("""
-        UPDATE Resources
-        SET Visibility = 'Private'
-        WHERE Visibility IS NULL
+        ALTER TABLE Users
+        ADD COLUMN IF NOT EXISTS notify_deadlines BOOLEAN DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS notify_sessions BOOLEAN DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS notify_resources BOOLEAN DEFAULT FALSE
     """)
 
     cur.execute("""
@@ -38,6 +35,91 @@ def ensure_schema():
             CHECK (UserID != PartnerID)
         )
     """)
+
+    # Add timestamp columns if not exist
+    tables = ['Users', 'StudyGroups', 'Deadlines', 'Resources', 'Bookmarks', 'Books', 'StudySessions']
+    for table in tables:
+        cur.execute(f"""
+            ALTER TABLE {table}
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        """)
+
+    # Create AuditLog table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS AuditLog (
+            AuditID SERIAL PRIMARY KEY,
+            TableName VARCHAR(50) NOT NULL,
+            Operation VARCHAR(10) NOT NULL,
+            OldData JSONB,
+            NewData JSONB,
+            ChangedBy INT REFERENCES Users(UserID),
+            ChangedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create functions and triggers
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION update_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = CURRENT_TIMESTAMP;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION audit_trigger_function()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            old_row JSONB;
+            new_row JSONB;
+            user_id INT;
+        BEGIN
+            user_id := NULL;
+            IF TG_OP = 'DELETE' THEN
+                old_row := row_to_json(OLD)::JSONB;
+                INSERT INTO AuditLog (TableName, Operation, OldData, ChangedBy)
+                VALUES (TG_TABLE_NAME, TG_OP, old_row, user_id);
+                RETURN OLD;
+            ELSIF TG_OP = 'UPDATE' THEN
+                old_row := row_to_json(OLD)::JSONB;
+                new_row := row_to_json(NEW)::JSONB;
+                INSERT INTO AuditLog (TableName, Operation, OldData, NewData, ChangedBy)
+                VALUES (TG_TABLE_NAME, TG_OP, old_row, new_row, user_id);
+                RETURN NEW;
+            ELSIF TG_OP = 'INSERT' THEN
+                new_row := row_to_json(NEW)::JSONB;
+                INSERT INTO AuditLog (TableName, Operation, NewData, ChangedBy)
+                VALUES (TG_TABLE_NAME, TG_OP, new_row, user_id);
+                RETURN NEW;
+            END IF;
+            RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+
+    # Create triggers for updated_at
+    for table in tables:
+        cur.execute(f"""
+            DROP TRIGGER IF EXISTS update_{table.lower()}_updated_at ON {table};
+            CREATE TRIGGER update_{table.lower()}_updated_at
+                BEFORE UPDATE ON {table}
+                FOR EACH ROW
+                EXECUTE FUNCTION update_updated_at();
+        """)
+
+    # Create audit triggers for main tables
+    audit_tables = ['Users', 'StudyGroups', 'Deadlines', 'Resources']
+    for table in audit_tables:
+        cur.execute(f"""
+            DROP TRIGGER IF EXISTS audit_{table.lower()} ON {table};
+            CREATE TRIGGER audit_{table.lower()}
+                AFTER INSERT OR UPDATE OR DELETE ON {table}
+                FOR EACH ROW
+                EXECUTE FUNCTION audit_trigger_function();
+        """)
 
     conn.commit()
     cur.close()

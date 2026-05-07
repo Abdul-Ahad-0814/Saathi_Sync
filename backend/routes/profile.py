@@ -10,7 +10,7 @@ def get_profile(user_id):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT UserID, Name, Email, University, Role FROM Users WHERE UserID = %s",
+            "SELECT UserID, Name, Email, University, Role, notify_deadlines, notify_sessions, notify_resources FROM Users WHERE UserID = %s",
             (user_id,)
         )
         user = cur.fetchone()
@@ -23,7 +23,10 @@ def get_profile(user_id):
                 "name": user[1],
                 "email": user[2],
                 "university": user[3],
-                "role": user[4]
+                "role": user[4],
+                "notify_deadlines": user[5],
+                "notify_sessions": user[6],
+                "notify_resources": user[7]
             }), 200
         else:
             return jsonify({"error": "User not found"}), 404
@@ -39,8 +42,11 @@ def update_profile(user_id):
     name = data.get('name')
     university = data.get('university')
     email = data.get('email')
+    notify_deadlines = data.get('notify_deadlines')
+    notify_sessions = data.get('notify_sessions')
+    notify_resources = data.get('notify_resources')
 
-    if not any([name, university, email]):
+    if not any([name, university, email, notify_deadlines is not None, notify_sessions is not None, notify_resources is not None]):
         return jsonify({"error": "Provide at least one field to update"}), 400
 
     try:
@@ -50,15 +56,24 @@ def update_profile(user_id):
         fields = []
         values = []
 
-        if name:
+        if name is not None:
             fields.append("Name = %s")
             values.append(name)
-        if university:
+        if university is not None:
             fields.append("University = %s")
             values.append(university)
-        if email:
+        if email is not None:
             fields.append("Email = %s")
             values.append(email)
+        if notify_deadlines is not None:
+            fields.append("notify_deadlines = %s")
+            values.append(notify_deadlines)
+        if notify_sessions is not None:
+            fields.append("notify_sessions = %s")
+            values.append(notify_sessions)
+        if notify_resources is not None:
+            fields.append("notify_resources = %s")
+            values.append(notify_resources)
 
         values.append(user_id)
 
