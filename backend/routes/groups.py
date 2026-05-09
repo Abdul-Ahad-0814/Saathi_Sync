@@ -66,14 +66,14 @@ def get_groups():
             params = [f'%{query}%', f'%{query}%', f'%{query}%']
 
         cur.execute(f"""
-            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy,
+            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy, g.CreatedBy,
                    COUNT(gm.UserID) as MemberCount
             FROM StudyGroups g
             LEFT JOIN Subjects s ON g.SubjectID = s.SubjectID
             LEFT JOIN Users u ON g.CreatedBy = u.UserID
             LEFT JOIN GroupMembers gm ON g.GroupID = gm.GroupID
             {where_clause}
-            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name
+            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name, g.CreatedBy
             ORDER BY g.GroupName ASC
         """, params)
 
@@ -88,7 +88,8 @@ def get_groups():
                 "group_name": row[1],
                 "subject": row[2],
                 "created_by": row[3],
-                "member_count": row[4]
+                "created_by_id": row[4],
+                "member_count": row[5]
             })
 
         return jsonify(groups), 200
@@ -104,7 +105,7 @@ def get_joined_groups(user_id):
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy,
+            SELECT g.GroupID, g.GroupName, s.SubjectName, u.Name as CreatedBy, g.CreatedBy,
                    COUNT(gm_all.UserID) as MemberCount
             FROM GroupMembers gm
             JOIN StudyGroups g ON gm.GroupID = g.GroupID
@@ -112,7 +113,7 @@ def get_joined_groups(user_id):
             LEFT JOIN Users u ON g.CreatedBy = u.UserID
             LEFT JOIN GroupMembers gm_all ON g.GroupID = gm_all.GroupID
             WHERE gm.UserID = %s
-            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name
+            GROUP BY g.GroupID, g.GroupName, s.SubjectName, u.Name, g.CreatedBy
             ORDER BY g.GroupName ASC
         """, (user_id,))
 
@@ -127,7 +128,8 @@ def get_joined_groups(user_id):
                 "group_name": row[1],
                 "subject": row[2],
                 "created_by": row[3],
-                "member_count": row[4]
+                "created_by_id": row[4],
+                "member_count": row[5]
             })
 
         return jsonify(groups), 200
@@ -197,6 +199,49 @@ def leave_group(group_id):
         conn.close()
 
         return jsonify({"message": "Left group successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── DELETE GROUP (OWNER ONLY) ─────────────────────────────
+@groups_bp.route('/groups/<int:group_id>', methods=['DELETE'])
+def delete_group(group_id):
+    data = request.json or {}
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT CreatedBy FROM StudyGroups WHERE GroupID = %s",
+            (group_id,)
+        )
+        row = cur.fetchone()
+
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Group not found"}), 404
+
+        owner_id = row[0]
+        if int(owner_id) != int(user_id):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Only the group owner can delete this group"}), 403
+
+        # Deleting the group disbands all members via GroupMembers(GroupID) ON DELETE CASCADE.
+        cur.execute("DELETE FROM StudyGroups WHERE GroupID = %s", (group_id,))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Group deleted and members disbanded successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

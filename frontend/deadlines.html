@@ -62,7 +62,7 @@
           <option value="Completed">Completed</option>
         </select>
       </div>
-      <button class="btn" onclick="addDeadline()">Add Deadline</button>
+      <button class="btn" id="deadlineSubmitBtn" onclick="addDeadline()">Add Deadline</button>
     </div>
 
     <div class="card">
@@ -83,8 +83,9 @@
         <input type="date" placeholder="To date">
       </div>
       <h2>Your Deadlines</h2>
+    
       <div class="table-shell">
-        <table>
+        <table class="deadlines-table">
           <thead>
             <tr>
               <th>Title</th>
@@ -94,8 +95,31 @@
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody id="deadlinesList">
             <!-- Deadlines will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Completed Deadlines</h2>
+
+      <div class="table-shell">
+        <table class="deadlines-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Due Date</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="completedDeadlinesList">
+            <!-- Completed deadlines will be loaded here -->
           </tbody>
         </table>
       </div>

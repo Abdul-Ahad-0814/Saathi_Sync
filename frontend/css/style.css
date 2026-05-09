@@ -764,61 +764,51 @@ textarea:focus {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  width: 100%;
 }
 
-.table-head {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 8px;
+/* table */
+.deadlines-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* 🔥 evenly distributes columns */
+}
+
+/* header */
+.deadlines-table thead {
   background: #F9FAFB;
+}
+
+.deadlines-table th {
+  padding: 14px 16px;
+  text-align: center;
+
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 12px 16px;
-}
 
-.deadlines-table-list {
-  display: block;
-}
-
-#deadlinesList .card {
-  margin: 0;
-  border-radius: 0;
-  box-shadow: none;
   border-bottom: 1px solid var(--color-border);
-  padding: 12px 16px;
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  align-items: center;
-  gap: 8px;
 }
 
-#deadlinesList .card:last-child {
-  border-bottom: 0;
+/* body rows */
+.deadlines-table td {
+  padding: 14px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+
+  font-size: 14px;
 }
 
-#deadlinesList .card:hover {
+/* hover effect */
+.deadlines-table tbody tr:hover {
   background: #F0FDF4;
 }
 
-#deadlinesList .card h3 {
-  font-size: 14px;
-  margin: 0;
-}
-
-#deadlinesList .card p {
-  font-size: 13px;
-  color: var(--color-text-muted);
-}
-
-#deadlinesList .btn-danger {
-  background: var(--color-danger);
-}
-
-#deadlinesList .btn-danger:hover {
-  background: #B91C1C;
+/* remove last border */
+.deadlines-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .resources-grid {

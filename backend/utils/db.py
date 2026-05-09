@@ -45,6 +45,11 @@ def ensure_schema():
             ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         """)
 
+    cur.execute("""
+        ALTER TABLE Deadlines
+        ADD COLUMN IF NOT EXISTS Status VARCHAR(20) DEFAULT 'Pending'
+    """)
+
     # Create AuditLog table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS AuditLog (

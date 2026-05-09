@@ -3,6 +3,18 @@ from utils.db import get_connection
 
 deadlines_bp = Blueprint('deadlines', __name__)
 
+
+def _normalize_status(status):
+    if not status:
+        return 'Pending'
+    return status.strip().title()
+
+
+def _normalize_priority(priority):
+    if not priority:
+        return 'Medium'
+    return priority.strip().title()
+
 # ─── ADD DEADLINE ───────────────────────────────────────────
 @deadlines_bp.route('/deadlines', methods=['POST'])
 def add_deadline():
@@ -12,8 +24,8 @@ def add_deadline():
     title = data.get('title')
     subject_name = data.get('subject_name')
     due_date = data.get('due_date')
-    priority = data.get('priority', 'Medium')
-    status = data.get('status', 'Pending')
+    priority = _normalize_priority(data.get('priority'))
+    status = _normalize_status(data.get('status'))
 
     if not all([user_id, title, due_date]):
         return jsonify({"error": "user_id, title and due_date are required"}), 400
@@ -41,6 +53,73 @@ def add_deadline():
         conn.close()
 
         return jsonify({"message": "Deadline added successfully", "deadline_id": deadline_id}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── UPDATE DEADLINE ────────────────────────────────────────
+@deadlines_bp.route('/deadlines/<int:deadline_id>', methods=['PUT', 'PATCH'])
+def update_deadline(deadline_id):
+    data = request.json or {}
+
+    title = data.get('title')
+    subject_name = data.get('subject_name')
+    due_date = data.get('due_date')
+    priority = data.get('priority')
+    status = data.get('status')
+
+    if not any([title, subject_name, due_date, priority, status]):
+        return jsonify({"error": "At least one field must be provided to update the deadline"}), 400
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT DeadlineID FROM Deadlines WHERE DeadlineID = %s", (deadline_id,))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Deadline not found"}), 404
+
+        updates = []
+        params = []
+
+        if title is not None:
+            updates.append("Title = %s")
+            params.append(title.strip())
+
+        if due_date is not None:
+            updates.append("DueDate = %s")
+            params.append(due_date)
+
+        if priority is not None:
+            updates.append("Priority = %s")
+            params.append(_normalize_priority(priority))
+
+        if status is not None:
+            updates.append("Status = %s")
+            params.append(_normalize_status(status))
+
+        if subject_name is not None:
+            subject_id = None
+            cleaned_subject_name = subject_name.strip()
+            if cleaned_subject_name:
+                cur.execute("SELECT SubjectID FROM Subjects WHERE SubjectName = %s", (cleaned_subject_name,))
+                subject = cur.fetchone()
+                if subject:
+                    subject_id = subject[0]
+            updates.append("SubjectID = %s")
+            params.append(subject_id)
+
+        params.append(deadline_id)
+        cur.execute(f"UPDATE Deadlines SET {', '.join(updates)} WHERE DeadlineID = %s", params)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Deadline updated successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

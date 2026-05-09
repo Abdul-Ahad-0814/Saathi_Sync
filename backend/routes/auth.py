@@ -3,6 +3,10 @@ from utils.db import get_connection
 
 auth_bp = Blueprint('auth', __name__)
 
+
+def _is_fast_email(email):
+    return bool(email) and email.strip().lower().endswith('@nu.edu.pk')
+
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.json
@@ -15,6 +19,9 @@ def signup():
 
     if not all([name, email, password]):
         return jsonify({"error": "Name, email and password are required"}), 400
+
+    if not _is_fast_email(email):
+        return jsonify({"error": "Only FAST university emails ending with @nu.edu.pk can access this website"}), 403
 
     try:
         conn = get_connection()
@@ -48,6 +55,9 @@ def login():
 
     if not all([email, password]):
         return jsonify({"error": "Email and password are required"}), 400
+
+    if not _is_fast_email(email):
+        return jsonify({"error": "Only FAST university emails ending with @nu.edu.pk can access this website"}), 403
 
     try:
         conn = get_connection()

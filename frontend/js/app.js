@@ -1,5 +1,11 @@
 const API = "http://127.0.0.1:5001";
 
+let editingDeadlineId = null;
+
+function isFastEmail(email) {
+  return typeof email === "string" && email.trim().toLowerCase().endsWith("@nu.edu.pk");
+}
+
 function getUserId() {
   return localStorage.getItem("user_id");
 }
@@ -37,6 +43,10 @@ async function login() {
   const password = passwordEl.value;
   if (!email || !password) {
     alert("Email and password are required");
+    return;
+  }
+  if (!isFastEmail(email)) {
+    alert("Only FAST university emails ending with @nu.edu.pk can access this website");
     return;
   }
 
@@ -87,6 +97,10 @@ async function signup() {
 
   if (!name || !email || !password || !confirmPassword) {
     alert("All fields are required");
+    return;
+  }
+  if (!isFastEmail(email)) {
+    alert("Only FAST university emails ending with @nu.edu.pk can access this website");
     return;
   }
   if (password !== confirmPassword) {
@@ -186,6 +200,7 @@ async function loadGroups(query = "") {
     }
 
     data.forEach((group) => {
+      const isOwner = userId && parseInt(userId, 10) === group.created_by_id;
       const item = document.createElement("div");
       item.className = "card";
       item.innerHTML = `
@@ -196,6 +211,7 @@ async function loadGroups(query = "") {
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-secondary" onclick="joinGroup(${group.group_id})">Join Group</button>
           <button class="btn" onclick="viewGroup(${group.group_id}, '${(group.group_name || "Group").replace(/'/g, "&#39;")}')">View Group</button>
+          ${isOwner ? `<button class="btn btn-danger" onclick="deleteGroup(${group.group_id})">Delete Group</button>` : ""}
         </div>
       `;
       list.appendChild(item);
@@ -255,6 +271,7 @@ async function loadJoinedGroups(userId) {
     }
 
     data.forEach((group) => {
+      const isOwner = parseInt(userId, 10) === group.created_by_id;
       const item = document.createElement("div");
       item.className = "card";
       item.innerHTML = `
@@ -262,6 +279,7 @@ async function loadJoinedGroups(userId) {
         <p>${group.subject || "General"}</p>
         <small>Members: ${group.member_count || 0}</small>
         <span class="badge-status completed">Joined</span>
+        ${isOwner ? `<div style="margin-top:10px;"><button class="btn btn-danger" onclick="deleteGroup(${group.group_id})">Delete Group</button></div>` : ""}
       `;
       list.appendChild(item);
     });
@@ -300,6 +318,36 @@ async function viewGroup(groupId, groupName) {
   }
 }
 
+async function deleteGroup(groupId) {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  if (!confirm("Delete this group? All members will be removed from this group.")) return;
+
+  try {
+    const res = await fetch(API + `/groups/${groupId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to delete group");
+      return;
+    }
+
+    alert("Group deleted successfully");
+    const details = document.getElementById("groupDetailsList");
+    if (details) details.innerHTML = "";
+    loadGroups((document.getElementById("groupSearch") || { value: "" }).value.trim());
+    loadJoinedGroups(userId);
+  } catch (err) {
+    alert("Error connecting to server");
+    console.error(err);
+  }
+}
+
 async function addDeadline() {
   const userId = ensureLoggedIn();
   if (!userId) return;
@@ -319,22 +367,31 @@ async function addDeadline() {
     return;
   }
 
+  const endpoint = editingDeadlineId ? `${API}/deadlines/${editingDeadlineId}` : `${API}/deadlines`;
+  const method = editingDeadlineId ? "PUT" : "POST";
+  const payload = { title, due_date, user_id: userId, priority, status };
+
   try {
-    const res = await fetch(API + "/deadlines", {
-      method: "POST",
+    const res = await fetch(endpoint, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, due_date, user_id: userId, priority, status }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.error || "Failed to add deadline");
+      alert(data.error || (editingDeadlineId ? "Failed to update deadline" : "Failed to add deadline"));
       return;
     }
 
-    alert("Deadline added successfully");
+    alert(editingDeadlineId ? "Deadline updated successfully" : "Deadline added successfully");
     titleEl.value = "";
     dateEl.value = "";
+    priorityEl.value = "Medium";
+    statusEl.value = "Pending";
+    editingDeadlineId = null;
+    const addButton = document.getElementById("deadlineSubmitBtn");
+    if (addButton) addButton.textContent = "Add Deadline";
     loadDeadlines();
   } catch (err) {
     alert("Error connecting to server");
@@ -345,7 +402,8 @@ async function addDeadline() {
 async function loadDeadlines(priority = null, status = null) {
   const userId = getUserId();
   const list = document.getElementById("deadlinesList");
-  if (!userId || !list) return;
+  const completedList = document.getElementById("completedDeadlinesList");
+  if (!userId || !list || !completedList) return;
 
   let url = API + "/deadlines/" + userId;
   const params = [];
@@ -357,25 +415,95 @@ async function loadDeadlines(priority = null, status = null) {
     const res = await fetch(url);
     const data = await res.json();
     list.innerHTML = "";
+    completedList.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--muted);">No deadlines yet.</p>';
+      list.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No deadlines yet.</td></tr>';
+      completedList.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No completed deadlines yet.</td></tr>';
       return;
     }
 
-    data.forEach((deadline) => {
+    const activeDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() !== "completed");
+    const completedDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() === "completed");
+
+    if (activeDeadlines.length === 0) {
+      list.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No active deadlines.</td></tr>';
+    }
+
+    if (completedDeadlines.length === 0) {
+      completedList.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No completed deadlines yet.</td></tr>';
+    }
+
+    activeDeadlines.forEach((deadline) => {
       const item = document.createElement("tr");
       item.innerHTML = `
         <td>${deadline.title}</td>
         <td>${deadline.due_date}</td>
         <td>${deadline.priority || "Medium"}</td>
         <td>${deadline.status || "Pending"}</td>
-        <td><button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button></td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick='editDeadline(${JSON.stringify(deadline)})' class="btn">Edit</button>
+          
+          <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+        </td>
       `;
       list.appendChild(item);
     });
+
+    completedDeadlines.forEach((deadline) => {
+      const item = document.createElement("tr");
+      item.innerHTML = `
+        <td>${deadline.title}</td>
+        <td>${deadline.due_date}</td>
+        <td>${deadline.priority || "Medium"}</td>
+        <td>${deadline.status || "Completed"}</td>
+        <td>
+          <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+        </td>
+      `;
+      completedList.appendChild(item);
+    });
   } catch (err) {
     console.error("Error loading deadlines:", err);
+  }
+}
+
+function editDeadline(deadline) {
+  const titleEl = document.getElementById("title");
+  const dateEl = document.getElementById("date");
+  const priorityEl = document.getElementById("priority");
+  const statusEl = document.getElementById("status");
+  const addButton = document.getElementById("deadlineSubmitBtn");
+
+  if (!titleEl || !dateEl || !priorityEl || !statusEl) return;
+
+  editingDeadlineId = deadline.deadline_id;
+  titleEl.value = deadline.title || "";
+  dateEl.value = deadline.due_date || "";
+  priorityEl.value = deadline.priority || "Medium";
+  statusEl.value = deadline.status || "Pending";
+  if (addButton) addButton.textContent = "Update Deadline";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function markDeadlineCompleted(deadlineId) {
+  try {
+    const res = await fetch(API + `/deadlines/${deadlineId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "Completed" }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to mark deadline as completed");
+      return;
+    }
+
+    loadDeadlines();
+  } catch (err) {
+    alert("Error connecting to server");
+    console.error(err);
   }
 }
 
@@ -1253,7 +1381,8 @@ async function loadDashboardData() {
 
   const weekDeadlines = deadlines.filter((deadline) => {
     const due = toDateOnly(deadline.due_date);
-    return due && due >= today && due <= weekEnd;
+    const isCompleted = String(deadline.status || "").toLowerCase() === "completed";
+    return due && due >= today && due <= weekEnd && !isCompleted;
   });
 
   setText("dashboardActiveProjects", String(groups.length));
@@ -1310,7 +1439,7 @@ async function loadDashboardData() {
 
     const sorted = deadlines
       .map((deadline) => ({ ...deadline, parsedDate: toDateOnly(deadline.due_date) }))
-      .filter((deadline) => deadline.parsedDate)
+      .filter((deadline) => deadline.parsedDate && String(deadline.status || "").toLowerCase() !== "completed")
       .sort((a, b) => a.parsedDate - b.parsedDate)
       .slice(0, 6);
 

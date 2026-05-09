@@ -44,6 +44,7 @@ CREATE TABLE Deadlines (
     SubjectID INT REFERENCES Subjects(SubjectID),
     DueDate DATE NOT NULL,
     Priority VARCHAR(10) CHECK (Priority IN ('Low', 'Medium', 'High')),
+    Status VARCHAR(20) DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
