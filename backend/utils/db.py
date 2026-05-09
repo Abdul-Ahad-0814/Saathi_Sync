@@ -143,10 +143,13 @@
 
 import psycopg2
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# Load .env locally only (ignored on Render)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 # -----------------------------
 # DATABASE CONNECTION (FAST + SAFE)
 # -----------------------------

@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
+import os
 
 from routes.auth import auth_bp
 from routes.partners import partners_bp
@@ -32,4 +33,5 @@ app.register_blueprint(admin_bp)
 ensure_schema()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(debug=False, port=port)
