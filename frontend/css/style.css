@@ -236,6 +236,10 @@ h3 {
   transform: translateY(1px);
 }
 
+.btn-danger {
+  background: red;
+  
+}
 .btn.btn-secondary {
   background: #fff;
   border: 1.5px solid var(--color-border);

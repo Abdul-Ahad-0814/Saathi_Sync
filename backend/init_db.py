@@ -23,11 +23,23 @@ def init_db():
             Email VARCHAR(100) UNIQUE NOT NULL,
             Password VARCHAR(255) NOT NULL,
             University VARCHAR(150),
+            availability_date DATE,
+            availability_time TIME,
+            notify_deadlines BOOLEAN DEFAULT FALSE,
+            notify_sessions BOOLEAN DEFAULT FALSE,
+            notify_resources BOOLEAN DEFAULT FALSE,
             Role VARCHAR(10) CHECK (Role IN ('Student', 'Admin')) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Ensure schema stays compatible with existing databases
+    cur.execute("ALTER TABLE Users ADD COLUMN IF NOT EXISTS availability_date DATE")
+    cur.execute("ALTER TABLE Users ADD COLUMN IF NOT EXISTS availability_time TIME")
+    cur.execute("ALTER TABLE Users ADD COLUMN IF NOT EXISTS notify_deadlines BOOLEAN DEFAULT FALSE")
+    cur.execute("ALTER TABLE Users ADD COLUMN IF NOT EXISTS notify_sessions BOOLEAN DEFAULT FALSE")
+    cur.execute("ALTER TABLE Users ADD COLUMN IF NOT EXISTS notify_resources BOOLEAN DEFAULT FALSE")
 
     # Add other tables as needed
     # For now, just Users
