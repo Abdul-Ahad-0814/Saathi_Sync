@@ -1,6 +1,11 @@
-const API = "https://saathi-sync.onrender.com";
+const API =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:5001"
+    : "https://saathi-sync.onrender.com";
 
 let editingDeadlineId = null;
+let currentPartnersCache = [];
+let currentPartnerIds = new Set();
 
 function isFastEmail(email) {
   return typeof email === "string" && email.trim().toLowerCase().endsWith("@nu.edu.pk");
@@ -223,6 +228,90 @@ async function loadGroups(query = "") {
   } catch (err) {
     console.error("Error loading groups:", err);
   }
+}
+
+function getPartnerFilters() {
+  const subjectFilter = (document.getElementById("subject") || { value: "" }).value.trim();
+  const availabilityDate = (document.getElementById("availabilityDate") || { value: "" }).value.trim();
+  const availabilityTime = (document.getElementById("availabilityTime") || { value: "" }).value.trim();
+  return { subjectFilter, availabilityDate, availabilityTime };
+}
+
+function cacheCurrentPartners(partners) {
+  currentPartnersCache = Array.isArray(partners) ? partners : [];
+  currentPartnerIds = new Set(currentPartnersCache.map((partner) => Number(partner.user_id)));
+}
+
+async function fetchCurrentPartnersData(userId) {
+  const res = await fetch(API + `/partners/${userId}/current`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+function renderCurrentPartners(partners) {
+  const list = document.getElementById("currentPartners");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!Array.isArray(partners) || partners.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);">No current partners yet.</p>';
+    return;
+  }
+
+  partners.forEach((partner) => {
+    const item = document.createElement("div");
+    item.className = "card";
+    item.innerHTML = `
+      <h3>${partner.name}</h3>
+      <p>Email: ${partner.email}</p>
+      <p>Subjects: ${partner.subject || "General"}</p>
+      <small>Connected On: ${partner.connected_on || "-"}</small>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function renderPartnerResults(data, subjectFilter, availabilityTime) {
+  const list = document.getElementById("results");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!Array.isArray(data) || data.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);">No partners found yet.</p>';
+    return;
+  }
+
+  const normalizedSubject = subjectFilter.toLowerCase();
+  const timePattern = /^[0-2][0-9]:[0-5][0-9]$/;
+
+  const filtered = data.filter((partner) => {
+    if (currentPartnerIds.has(Number(partner.user_id))) return false;
+    const subjects = partner.subjects || partner.subject || "";
+    return !normalizedSubject || subjects.toLowerCase().includes(normalizedSubject);
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);">No matches for current filters.</p>';
+    return;
+  }
+
+  filtered.forEach((partner) => {
+    const item = document.createElement("div");
+    item.className = "card";
+    const universityValue = partner.university || "";
+    const hasTimeAsUniversity = timePattern.test(universityValue);
+    const displayAvailabilityTime = partner.availability_time || (hasTimeAsUniversity ? universityValue : availabilityTime) || "Flexible";
+
+    item.innerHTML = `
+      <h3>${partner.name}</h3>
+      <p>Subjects: ${partner.subjects || partner.subject || "General"}</p>
+      <p>Availability Time: ${displayAvailabilityTime}</p>
+      <button class="btn btn-secondary" onclick="connectPartner(${partner.user_id})">Add Partner</button>
+    `;
+    list.appendChild(item);
+  });
 }
 
 function searchGroups() {
@@ -1012,11 +1101,7 @@ async function findPartners() {
   const userId = ensureLoggedIn();
   if (!userId) return;
 
-  const subjectFilter = (document.getElementById("subject") || { value: "" }).value.trim();
-  const availabilityDate = (document.getElementById("availabilityDate") || { value: "" }).value.trim();
-  const availabilityTime = (document.getElementById("availabilityTime") || { value: "" }).value.trim();
-  const list = document.getElementById("results");
-  if (!list) return;
+  const { subjectFilter, availabilityDate, availabilityTime } = getPartnerFilters();
 
   try {
     const params = new URLSearchParams();
@@ -1026,46 +1111,16 @@ async function findPartners() {
     if (availabilityDate) params.set("availability_date", availabilityDate);
     if (availabilityTime) params.set("availability_time", availabilityTime);
 
-    const res = await fetch(API + `/partners/${userId}${params.toString() ? `?${params.toString()}` : ""}`);
-    const data = await res.json();
-    list.innerHTML = "";
+    const searchUrl = API + `/partners/${userId}${params.toString() ? `?${params.toString()}` : ""}`;
+    const [partnersRes, currentPartners] = await Promise.all([
+      fetch(searchUrl).then((res) => res.json()),
+      currentPartnersCache.length ? Promise.resolve(currentPartnersCache) : fetchCurrentPartnersData(userId),
+    ]);
 
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<p style="color:var(--muted);">No partners found yet.</p>';
-      return;
-    }
+    cacheCurrentPartners(currentPartners);
 
-    const normalizedSubject = subjectFilter.toLowerCase();
-    const filtered = data.filter((partner) => {
-      const subjects = partner.subjects || partner.subject || "";
-      const subjectMatch = !normalizedSubject || subjects.toLowerCase().includes(normalizedSubject);
-      return subjectMatch;
-    });
-
-    if (filtered.length === 0) {
-      list.innerHTML = '<p style="color:var(--muted);">No matches for current filters.</p>';
-      return;
-    }
-
-    filtered.forEach((partner) => {
-      const item = document.createElement("div");
-      item.className = "card";
-      const universityValue = partner.university || "";
-      const timePattern = /^[0-2][0-9]:[0-5][0-9]$/;
-      const hasTimeAsUniversity = timePattern.test(universityValue);
-      const displayUniversity = hasTimeAsUniversity ? "N/A" : (partner.university || "N/A");
-      const displayAvailabilityTime = partner.availability_time || (hasTimeAsUniversity ? universityValue : availabilityTime) || "Flexible";
-
-      item.innerHTML = `
-        <h3>${partner.name}</h3>
-  
-        <p>Subjects: ${partner.subjects || partner.subject || "General"}</p>
-     
-        <p>Availability Time: ${displayAvailabilityTime}</p>
-        <button class="btn btn-secondary" onclick="connectPartner(${partner.user_id})">Add Partner</button>
-      `;
-      list.appendChild(item);
-    });
+    renderCurrentPartners(currentPartnersCache);
+    renderPartnerResults(partnersRes, subjectFilter, availabilityTime);
   } catch (err) {
     console.error("Error finding partners:", err);
   }
@@ -1089,39 +1144,22 @@ async function connectPartner(partnerId) {
     }
 
     alert("Partner added to current partners");
-    loadCurrentPartners();
+    await loadCurrentPartners(true);
+    await findPartners();
   } catch (err) {
     console.error("Error connecting partner:", err);
   }
 }
 
-async function loadCurrentPartners() {
+async function loadCurrentPartners(refresh = false) {
   const userId = getUserId();
   const list = document.getElementById("currentPartners");
   if (!userId || !list) return;
 
   try {
-    const res = await fetch(API + `/partners/${userId}/current`);
-    const data = await res.json();
-    list.innerHTML = "";
-
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<p style="color:var(--muted);">No current partners yet.</p>';
-      return;
-    }
-
-    data.forEach((partner) => {
-      const item = document.createElement("div");
-      item.className = "card";
-      item.innerHTML = `
-        <h3>${partner.name}</h3>
-        <p>Email: ${partner.email}</p>
-      
-        <p>Subjects: ${partner.subject || "General"}</p>
-        <small>Connected On: ${partner.connected_on || "-"}</small>
-      `;
-      list.appendChild(item);
-    });
+    const partners = refresh || !currentPartnersCache.length ? await fetchCurrentPartnersData(userId) : currentPartnersCache;
+    cacheCurrentPartners(partners);
+    renderCurrentPartners(currentPartnersCache);
   } catch (err) {
     console.error("Error loading current partners:", err);
   }
@@ -1612,6 +1650,5 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (page === "partners.html") {
     findPartners();
-    loadCurrentPartners();
   }
 });

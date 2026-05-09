@@ -12,12 +12,13 @@ def find_partners(user_id):
     availability_date = request.args.get('availability_date', '').strip()
     availability_time = request.args.get('availability_time', '').strip()
 
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
 
         having_clauses = []
-        params = [user_id]
+        params = [user_id, user_id]
 
         if query:
             having_clauses.append("(u.Name ILIKE %s OR COALESCE(u.University, '') ILIKE %s OR COALESCE(string_agg(DISTINCT s.SubjectName, ', ' ORDER BY s.SubjectName), '') ILIKE %s)")
@@ -54,7 +55,13 @@ def find_partners(user_id):
             FROM Users u
             LEFT JOIN UserSubjects us ON u.UserID = us.UserID
             LEFT JOIN Subjects s ON us.SubjectID = s.SubjectID
-            WHERE u.UserID != %s
+                        WHERE u.UserID != %s
+                            AND NOT EXISTS (
+                                    SELECT 1
+                                    FROM StudyPartners sp
+                                    WHERE sp.UserID = %s
+                                        AND sp.PartnerID = u.UserID
+                            )
             GROUP BY u.UserID, u.Name, u.University, u.availability_date, u.availability_time
             {having_sql}
             ORDER BY u.Name ASC
@@ -78,6 +85,10 @@ def find_partners(user_id):
         return jsonify(partners), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -93,6 +104,7 @@ def connect_partner():
     if int(user_id) == int(partner_id):
         return jsonify({"error": "Cannot connect with yourself"}), 400
 
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -113,11 +125,16 @@ def connect_partner():
         return jsonify({"message": "Partner connected successfully"}), 201
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
 @partners_bp.route('/partners/<int:user_id>/current', methods=['GET'])
 def get_current_partners(user_id):
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -153,6 +170,10 @@ def get_current_partners(user_id):
         return jsonify(partners), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -165,6 +186,7 @@ def add_subject(user_id):
     if not subject_name:
         return jsonify({"error": "Subject name is required"}), 400
 
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -196,12 +218,17 @@ def add_subject(user_id):
         return jsonify({"message": "Subject added successfully", "subject_id": subject_id}), 201
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
 # ─── GET USER'S SUBJECTS ────────────────────────────────────
 @partners_bp.route('/subjects/<int:user_id>', methods=['GET'])
 def get_subjects(user_id):
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
