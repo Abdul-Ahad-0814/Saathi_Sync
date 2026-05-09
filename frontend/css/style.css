@@ -466,7 +466,7 @@ textarea:focus {
 }
 
 .stat-card-primary {
-  background: url("../../image_src/total_hours.png") !important;
+  background: url(".././image_src/total_hours.png") !important;
   background-size: cover !important;
   background-position: center;
   background-repeat: no-repeat;
@@ -854,7 +854,7 @@ textarea:focus {
 }
 
 .timer-card {
-  background: url("../../image_src/timer_image.jpg") !important;
+  background: url(".././image_src/timer_image.jpg") !important;
   background-size: cover !important;
   background-position: center;
   background-repeat: no-repeat;
@@ -937,7 +937,7 @@ textarea:focus {
 
 .profile-top-card {
   display: flex;
-  background: url("../../image_src/profile_card.jpg") !important;
+  background: url(".././image_src/profile_card.jpg") !important;
   align-items: center;
   gap: 16px;
 }
