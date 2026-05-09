@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:5001";
+const API = "https://saathi-sync.onrender.com";
 
 let editingDeadlineId = null;
 
