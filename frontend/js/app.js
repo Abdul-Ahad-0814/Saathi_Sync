@@ -726,10 +726,9 @@ async function updateProfile() {
   const subjectEl = document.getElementById("subject");
   if (!nameEl) return;
 
-  const payload = {
-    name: nameEl.value.trim(),
-    university: availabilityEl ? availabilityEl.value.trim() : "",
-  };
+  const payload = {};
+  if (nameEl.value.trim()) payload.name = nameEl.value.trim();
+  if (availabilityEl) payload.availability_time = availabilityEl.value.trim() || null;
 
   try {
     const res = await fetch(API + "/profile/" + userId, {
@@ -788,7 +787,7 @@ async function loadProfile() {
       const displayRole = document.getElementById("profileDisplayRole");
 
       if (nameEl) nameEl.value = profileData.name || "";
-      if (availabilityEl) availabilityEl.value = profileData.university || "";
+      if (availabilityEl) availabilityEl.value = profileData.availability_time || "";
       if (displayName) displayName.textContent = profileData.name || "Saathi User";
       if (displayEmail) displayEmail.textContent = profileData.email || "";
       if (displayRole) displayRole.textContent = profileData.role || "Student";
@@ -1038,7 +1037,8 @@ async function findPartners() {
 
     const normalizedSubject = subjectFilter.toLowerCase();
     const filtered = data.filter((partner) => {
-      const subjectMatch = !normalizedSubject || (partner.subjects || "").toLowerCase().includes(normalizedSubject);
+      const subjects = partner.subjects || partner.subject || "";
+      const subjectMatch = !normalizedSubject || subjects.toLowerCase().includes(normalizedSubject);
       return subjectMatch;
     });
 
@@ -1050,12 +1050,18 @@ async function findPartners() {
     filtered.forEach((partner) => {
       const item = document.createElement("div");
       item.className = "card";
+      const universityValue = partner.university || "";
+      const timePattern = /^[0-2][0-9]:[0-5][0-9]$/;
+      const hasTimeAsUniversity = timePattern.test(universityValue);
+      const displayUniversity = hasTimeAsUniversity ? "N/A" : (partner.university || "N/A");
+      const displayAvailabilityTime = partner.availability_time || (hasTimeAsUniversity ? universityValue : availabilityTime) || "Flexible";
+
       item.innerHTML = `
         <h3>${partner.name}</h3>
-        <p>University: ${partner.university || "N/A"}</p>
-        <p>Subjects: ${partner.subjects || "General"}</p>
-        <p>Availability Date: ${partner.availability_date || availabilityDate || "Flexible"}</p>
-        <p>Availability Time: ${partner.availability_time || availabilityTime || "Flexible"}</p>
+  
+        <p>Subjects: ${partner.subjects || partner.subject || "General"}</p>
+     
+        <p>Availability Time: ${displayAvailabilityTime}</p>
         <button class="btn btn-secondary" onclick="connectPartner(${partner.user_id})">Add Partner</button>
       `;
       list.appendChild(item);
@@ -1110,7 +1116,7 @@ async function loadCurrentPartners() {
       item.innerHTML = `
         <h3>${partner.name}</h3>
         <p>Email: ${partner.email}</p>
-        <p>University: ${partner.university || "N/A"}</p>
+      
         <p>Subjects: ${partner.subject || "General"}</p>
         <small>Connected On: ${partner.connected_on || "-"}</small>
       `;

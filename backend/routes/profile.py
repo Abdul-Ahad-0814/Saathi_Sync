@@ -10,7 +10,7 @@ def get_profile(user_id):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT UserID, Name, Email, University, Role, notify_deadlines, notify_sessions, notify_resources FROM Users WHERE UserID = %s",
+            "SELECT UserID, Name, Email, University, availability_time, Role, notify_deadlines, notify_sessions, notify_resources FROM Users WHERE UserID = %s",
             (user_id,)
         )
         user = cur.fetchone()
@@ -23,10 +23,11 @@ def get_profile(user_id):
                 "name": user[1],
                 "email": user[2],
                 "university": user[3],
-                "role": user[4],
-                "notify_deadlines": user[5],
-                "notify_sessions": user[6],
-                "notify_resources": user[7]
+                "availability_time": str(user[4]) if user[4] else None,
+                "role": user[5],
+                "notify_deadlines": user[6],
+                "notify_sessions": user[7],
+                "notify_resources": user[8]
             }), 200
         else:
             return jsonify({"error": "User not found"}), 404
@@ -41,12 +42,13 @@ def update_profile(user_id):
 
     name = data.get('name')
     university = data.get('university')
+    availability_time = data.get('availability_time')
     email = data.get('email')
     notify_deadlines = data.get('notify_deadlines')
     notify_sessions = data.get('notify_sessions')
     notify_resources = data.get('notify_resources')
 
-    if not any([name, university, email, notify_deadlines is not None, notify_sessions is not None, notify_resources is not None]):
+    if not any([name, university, availability_time is not None, email, notify_deadlines is not None, notify_sessions is not None, notify_resources is not None]):
         return jsonify({"error": "Provide at least one field to update"}), 400
 
     try:
@@ -62,6 +64,9 @@ def update_profile(user_id):
         if university is not None:
             fields.append("University = %s")
             values.append(university)
+        if availability_time is not None:
+            fields.append("availability_time = %s")
+            values.append(availability_time)
         if email is not None:
             fields.append("Email = %s")
             values.append(email)

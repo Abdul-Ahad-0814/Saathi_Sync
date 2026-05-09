@@ -30,17 +30,32 @@ def find_partners(user_id):
         if university:
             having_clauses.append("COALESCE(u.University, '') ILIKE %s")
             params.append(f'%{university}%')
+        if availability_date:
+            having_clauses.append("u.availability_date = %s")
+            params.append(availability_date)
+        if availability_time:
+            having_clauses.append("(u.availability_time = %s OR (u.availability_time IS NULL AND u.University ~ '^[0-2][0-9]:[0-5][0-9]$' AND u.University = %s))")
+            params.extend([availability_time, availability_time])
 
         having_sql = f"HAVING {' AND '.join(having_clauses)}" if having_clauses else ""
 
         cur.execute(f"""
-            SELECT u.UserID, u.Name, u.University,
-                   COALESCE(string_agg(DISTINCT s.SubjectName, ', ' ORDER BY s.SubjectName), '') AS Subjects
+            SELECT u.UserID, u.Name,
+                   CASE
+                     WHEN u.availability_time IS NULL AND u.University ~ '^[0-2][0-9]:[0-5][0-9]$' THEN NULL
+                     ELSE u.University
+                   END AS University,
+                   COALESCE(string_agg(DISTINCT s.SubjectName, ', ' ORDER BY s.SubjectName), '') AS Subjects,
+                   u.availability_date,
+                   CASE
+                     WHEN u.availability_time IS NULL AND u.University ~ '^[0-2][0-9]:[0-5][0-9]$' THEN u.University
+                     ELSE u.availability_time
+                   END AS availability_time
             FROM Users u
             LEFT JOIN UserSubjects us ON u.UserID = us.UserID
             LEFT JOIN Subjects s ON us.SubjectID = s.SubjectID
             WHERE u.UserID != %s
-            GROUP BY u.UserID, u.Name, u.University
+            GROUP BY u.UserID, u.Name, u.University, u.availability_date, u.availability_time
             {having_sql}
             ORDER BY u.Name ASC
         """, params)
@@ -55,9 +70,9 @@ def find_partners(user_id):
                 "user_id": row[0],
                 "name": row[1],
                 "university": row[2],
-                "subject": row[3],
-                "availability_date": availability_date,
-                "availability_time": availability_time
+                "subjects": row[3],
+                "availability_date": str(row[4]) if row[4] else None,
+                "availability_time": str(row[5]) if row[5] else None
             })
 
         return jsonify(partners), 200
