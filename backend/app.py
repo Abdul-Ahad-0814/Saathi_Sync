@@ -35,3 +35,7 @@ ensure_schema()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     app.run(debug=False, port=port)
+
+@app.route("/")
+def home():
+    return {"status": "Saathi Sync API is running! 🚀"}, 200
