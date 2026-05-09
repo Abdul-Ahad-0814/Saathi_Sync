@@ -47,6 +47,10 @@ def create_group():
         return jsonify({"message": "Group created successfully", "group_id": group_id}), 201
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -95,6 +99,10 @@ def get_groups():
         return jsonify(groups), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -135,6 +143,10 @@ def get_joined_groups(user_id):
         return jsonify(groups), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 

@@ -46,6 +46,10 @@ def add_resource():
         return jsonify({"message": "Resource added successfully", "resource_id": resource_id}), 201
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -57,7 +61,7 @@ def get_resources():
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath
+            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath, r.Visibility
             FROM Resources r
             LEFT JOIN Subjects s ON r.SubjectID = s.SubjectID
             LEFT JOIN Users u ON r.UploadedBy = u.UserID
@@ -75,13 +79,17 @@ def get_resources():
                 "subject": row[2],
                 "type": row[3],
                 "uploaded_by": row[4],
-                    "file_path": row[5],
-                    "visibility": row[6] if len(row) > 6 else "Private"
+                "file_path": row[5],
+                "visibility": row[6] if row[6] else "Private"
             })
 
         return jsonify(resources), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -119,6 +127,10 @@ def get_resources_by_user(user_id):
         return jsonify(resources), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -156,6 +168,10 @@ def get_public_resources():
         return jsonify(resources), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -167,7 +183,7 @@ def get_resources_by_subject(subject_id):
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath
+            SELECT r.ResourceID, r.Title, s.SubjectName, r.Type, u.Name as UploadedBy, r.FilePath, r.Visibility
             FROM Resources r
             LEFT JOIN Subjects s ON r.SubjectID = s.SubjectID
             LEFT JOIN Users u ON r.UploadedBy = u.UserID
@@ -186,12 +202,17 @@ def get_resources_by_subject(subject_id):
                 "subject": row[2],
                 "type": row[3],
                 "uploaded_by": row[4],
-                "file_path": row[5]
+                "file_path": row[5],
+                "visibility": row[6] if row[6] else "Private"
             })
 
         return jsonify(resources), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -211,4 +232,8 @@ def delete_resource(resource_id):
         return jsonify({"message": "Resource deleted successfully"}), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500

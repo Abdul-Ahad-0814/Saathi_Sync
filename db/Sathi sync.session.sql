@@ -1,5 +1,5 @@
 
-CREATE TABLE Users (
+CREATE TABLE users (
     UserID SERIAL PRIMARY KEY,
     Name VARCHAR(100) NOT NULL,
     Email VARCHAR(100) UNIQUE NOT NULL,
@@ -10,38 +10,38 @@ CREATE TABLE Users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Subjects (
+CREATE TABLE subjects (
     SubjectID SERIAL PRIMARY KEY,
     SubjectName VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE UserSubjects (
-    UserID INT REFERENCES Users(UserID) ON DELETE CASCADE,
-    SubjectID INT REFERENCES Subjects(SubjectID) ON DELETE CASCADE,
+CREATE TABLE usersubjects (
+    UserID INT REFERENCES users(UserID) ON DELETE CASCADE,
+    SubjectID INT REFERENCES subjects(SubjectID) ON DELETE CASCADE,
     PRIMARY KEY (UserID, SubjectID)
 );
 
-CREATE TABLE StudyGroups (
+CREATE TABLE studygroups (
     GroupID SERIAL PRIMARY KEY,
     GroupName VARCHAR(100) NOT NULL,
-    SubjectID INT REFERENCES Subjects(SubjectID),
-    CreatedBy INT REFERENCES Users(UserID),
+    SubjectID INT REFERENCES subjects(SubjectID),
+    CreatedBy INT REFERENCES users(UserID),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE GroupMembers (
-    GroupID INT REFERENCES StudyGroups(GroupID) ON DELETE CASCADE,
-    UserID INT REFERENCES Users(UserID) ON DELETE CASCADE,
+CREATE TABLE groupmembers (
+    GroupID INT REFERENCES studygroups(GroupID) ON DELETE CASCADE,
+    UserID INT REFERENCES users(UserID) ON DELETE CASCADE,
     JoinDate DATE DEFAULT CURRENT_DATE,
     PRIMARY KEY (GroupID, UserID)
 );
 
-CREATE TABLE Deadlines (
+CREATE TABLE deadlines (
     DeadlineID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID) ON DELETE CASCADE,
+    UserID INT REFERENCES users(UserID) ON DELETE CASCADE,
     Title VARCHAR(150) NOT NULL,
-    SubjectID INT REFERENCES Subjects(SubjectID),
+    SubjectID INT REFERENCES subjects(SubjectID),
     DueDate DATE NOT NULL,
     Priority VARCHAR(10) CHECK (Priority IN ('Low', 'Medium', 'High')),
     Status VARCHAR(20) DEFAULT 'Pending',
@@ -49,41 +49,41 @@ CREATE TABLE Deadlines (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Resources (
+CREATE TABLE resources (
     ResourceID SERIAL PRIMARY KEY,
     Title VARCHAR(150) NOT NULL,
-    SubjectID INT REFERENCES Subjects(SubjectID),
+    SubjectID INT REFERENCES subjects(SubjectID),
     Type VARCHAR(20) CHECK (Type IN ('Notes', 'PastPaper')),
-    UploadedBy INT REFERENCES Users(UserID),
+    UploadedBy INT REFERENCES users(UserID),
     FilePath VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Bookmarks (
+CREATE TABLE bookmarks (
     BookmarkID SERIAL PRIMARY KEY,
-    UserID INT NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
-    ResourceID INT NOT NULL REFERENCES Resources(ResourceID) ON DELETE CASCADE,
+    UserID INT NOT NULL REFERENCES users(UserID) ON DELETE CASCADE,
+    ResourceID INT NOT NULL REFERENCES resources(ResourceID) ON DELETE CASCADE,
     SavedTopic VARCHAR(150),
     UNIQUE (UserID, ResourceID),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Books (
+CREATE TABLE books (
     BookID SERIAL PRIMARY KEY,
     Title VARCHAR(150) NOT NULL,
     Author VARCHAR(100),
-    SubjectID INT REFERENCES Subjects(SubjectID),
+    SubjectID INT REFERENCES subjects(SubjectID),
     IsAvailable BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE StudySessions (
+CREATE TABLE studysessions (
     SessionID SERIAL PRIMARY KEY,
-    UserID INT NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
-    SubjectID INT REFERENCES Subjects(SubjectID),
+    UserID INT NOT NULL REFERENCES users(UserID) ON DELETE CASCADE,
+    SubjectID INT REFERENCES subjects(SubjectID),
     DurationMinutes INT,
     TopicCovered VARCHAR(200),
     SessionDate DATE DEFAULT CURRENT_DATE,
@@ -92,13 +92,13 @@ CREATE TABLE StudySessions (
 );
 
 -- Audit table for logging changes
-CREATE TABLE AuditLog (
+CREATE TABLE auditlog (
     AuditID SERIAL PRIMARY KEY,
     TableName VARCHAR(50) NOT NULL,
     Operation VARCHAR(10) NOT NULL, -- INSERT, UPDATE, DELETE
     OldData JSONB,
     NewData JSONB,
-    ChangedBy INT REFERENCES Users(UserID),
+    ChangedBy INT REFERENCES users(UserID),
     ChangedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -124,18 +124,18 @@ BEGIN
 
     IF TG_OP = 'DELETE' THEN
         old_row := row_to_json(OLD)::JSONB;
-        INSERT INTO AuditLog (TableName, Operation, OldData, ChangedBy)
+        INSERT INTO auditlog (TableName, Operation, OldData, ChangedBy)
         VALUES (TG_TABLE_NAME, TG_OP, old_row, user_id);
         RETURN OLD;
     ELSIF TG_OP = 'UPDATE' THEN
         old_row := row_to_json(OLD)::JSONB;
         new_row := row_to_json(NEW)::JSONB;
-        INSERT INTO AuditLog (TableName, Operation, OldData, NewData, ChangedBy)
+        INSERT INTO auditlog (TableName, Operation, OldData, NewData, ChangedBy)
         VALUES (TG_TABLE_NAME, TG_OP, old_row, new_row, user_id);
         RETURN NEW;
     ELSIF TG_OP = 'INSERT' THEN
         new_row := row_to_json(NEW)::JSONB;
-        INSERT INTO AuditLog (TableName, Operation, NewData, ChangedBy)
+        INSERT INTO auditlog (TableName, Operation, NewData, ChangedBy)
         VALUES (TG_TABLE_NAME, TG_OP, new_row, user_id);
         RETURN NEW;
     END IF;
@@ -145,59 +145,72 @@ $$ LANGUAGE plpgsql;
 
 -- Triggers for updated_at
 CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON Users
+    BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_studygroups_updated_at
-    BEFORE UPDATE ON StudyGroups
+    BEFORE UPDATE ON studygroups
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_deadlines_updated_at
-    BEFORE UPDATE ON Deadlines
+    BEFORE UPDATE ON deadlines
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_resources_updated_at
-    BEFORE UPDATE ON Resources
+    BEFORE UPDATE ON resources
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_bookmarks_updated_at
-    BEFORE UPDATE ON Bookmarks
+    BEFORE UPDATE ON bookmarks
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_books_updated_at
-    BEFORE UPDATE ON Books
+    BEFORE UPDATE ON books
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_studysessions_updated_at
-    BEFORE UPDATE ON StudySessions
+    BEFORE UPDATE ON studysessions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
 -- Audit triggers
 CREATE TRIGGER audit_users
-    AFTER INSERT OR UPDATE OR DELETE ON Users
+    AFTER INSERT OR UPDATE OR DELETE ON users
     FOR EACH ROW
     EXECUTE FUNCTION audit_trigger_function();
 
 CREATE TRIGGER audit_studygroups
-    AFTER INSERT OR UPDATE OR DELETE ON StudyGroups
+    AFTER INSERT OR UPDATE OR DELETE ON studygroups
     FOR EACH ROW
     EXECUTE FUNCTION audit_trigger_function();
 
 CREATE TRIGGER audit_deadlines
-    AFTER INSERT OR UPDATE OR DELETE ON Deadlines
+    AFTER INSERT OR UPDATE OR DELETE ON deadlines
     FOR EACH ROW
     EXECUTE FUNCTION audit_trigger_function();
 
 CREATE TRIGGER audit_resources
-    AFTER INSERT OR UPDATE OR DELETE ON Resources
+    AFTER INSERT OR UPDATE OR DELETE ON resources
     FOR EACH ROW
     EXECUTE FUNCTION audit_trigger_function();
 
+CREATE TRIGGER audit_bookmarks
+    AFTER INSERT OR UPDATE OR DELETE ON bookmarks
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
 
+CREATE TRIGGER audit_books
+    AFTER INSERT OR UPDATE OR DELETE ON books
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+CREATE TRIGGER audit_studysessions
+    AFTER INSERT OR UPDATE OR DELETE ON studysessions
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();

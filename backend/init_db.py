@@ -6,11 +6,12 @@ load_dotenv()
 
 def init_db():
     conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
+        # host=os.getenv("DB_HOST"),
+        # port=os.getenv("DB_PORT"),
+        # dbname=os.getenv("DB_NAME"),
+        # user=os.getenv("DB_USER"),
+        # password=os.getenv("DB_PASSWORD")
+        os.getenv("DATABASE_URL")
     )
     cur = conn.cursor()
 

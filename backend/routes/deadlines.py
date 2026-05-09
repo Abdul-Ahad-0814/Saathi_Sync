@@ -55,6 +55,10 @@ def add_deadline():
         return jsonify({"message": "Deadline added successfully", "deadline_id": deadline_id}), 201
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -122,6 +126,10 @@ def update_deadline(deadline_id):
         return jsonify({"message": "Deadline updated successfully"}), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -173,6 +181,10 @@ def get_deadlines(user_id):
         return jsonify(deadlines), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -192,4 +204,8 @@ def delete_deadline(deadline_id):
         return jsonify({"message": "Deadline deleted successfully"}), 200
 
     except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500

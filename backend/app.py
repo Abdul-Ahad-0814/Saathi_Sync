@@ -28,6 +28,7 @@ app.register_blueprint(sessions_bp)
 app.register_blueprint(profile_bp)
 app.register_blueprint(admin_bp)
 
+# Ensure database schema is initialized
 ensure_schema()
 
 if __name__ == "__main__":
