@@ -1158,7 +1158,7 @@ async function loadProfile() {
       fetchWithCache(`/groups/joined/${userId}`, {}, CACHE_TTL.SHORT, true),
     ]);
 
-    if (profileRes.ok) {
+    if (profileData) {
       const nameEl = document.getElementById("name");
       const availabilityEl = document.getElementById("availability");
       const displayName = document.getElementById("profileDisplayName");
@@ -1172,6 +1172,7 @@ async function loadProfile() {
       if (displayRole) displayRole.textContent = profileData.role || "Student";
     }
 
+    console.log(groups.length);
     setText("profileSessionCount", String(sessions.length));
     setText("profileDeadlineCount", String(deadlines.length));
     setText("profileResourceCount", String(resources.length));
