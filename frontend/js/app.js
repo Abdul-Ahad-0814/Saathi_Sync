@@ -11,6 +11,70 @@ function isFastEmail(email) {
   return typeof email === "string" && email.trim().toLowerCase().endsWith("@nu.edu.pk");
 }
 
+
+/* Responsive sidebar hamburger toggle for mobile */
+(function () {
+  function initSidebarToggle() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+
+    const topbarLeft = document.querySelector('.topbar-left');
+    const pageTopbar = document.querySelector('.page-topbar');
+    const topbar = document.querySelector('.topbar');
+    let insertTarget = topbarLeft || (pageTopbar ? pageTopbar : topbar);
+
+    const hamburger = document.createElement('button');
+    hamburger.className = 'hamburger-btn';
+    hamburger.setAttribute('aria-label', 'Toggle sidebar');
+    hamburger.setAttribute('aria-expanded', 'false');
+    hamburger.innerHTML = '&#9776;';
+
+    if (insertTarget) {
+      // ensure insertTarget uses flex so button sits nicely
+      insertTarget.style.display = insertTarget.style.display || '';
+      insertTarget.insertBefore(hamburger, insertTarget.firstChild);
+    } else {
+      // fallback: place at top of main container
+      const main = document.querySelector('.main') || document.body;
+      main.insertBefore(hamburger, main.firstChild);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+      hamburger.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+      hamburger.setAttribute('aria-expanded', 'false');
+    }
+
+    hamburger.addEventListener('click', function () {
+      if (sidebar.classList.contains('open')) closeSidebar();
+      else openSidebar();
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 980) closeSidebar();
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSidebarToggle);
+  else initSidebarToggle();
+})();
+
 function getUserId() {
   return localStorage.getItem("user_id");
 }
@@ -1544,9 +1608,9 @@ function initTimer() {
 
   const display = timer.querySelector(".timer-display");
   const startBtn = timer.querySelector(".btn-start-control");
-  const pauseBtn = timer.querySelector(".btn-light-control");
+  // const pauseBtn = timer.querySelector(".btn-light-control");
   const stopBtn = timer.querySelector(".btn-stop-control");
-  if (!display || !startBtn || !pauseBtn || !stopBtn) return;
+  if (!display || !startBtn || !stopBtn) return;
 
   let interval = null;
 
@@ -1577,7 +1641,7 @@ function initTimer() {
   function updateButtonStates() {
     const isRunning = localStorage.getItem("timerRunning") === "true";
     startBtn.disabled = isRunning;
-    pauseBtn.disabled = !isRunning;
+    // pauseBtn.disabled = !isRunning;
     stopBtn.disabled = false;
   }
 
@@ -1596,12 +1660,12 @@ function initTimer() {
     updateButtonStates();
   });
 
-  pauseBtn.addEventListener("click", () => {
-    clearInterval(interval);
-    interval = null;
-    localStorage.setItem("timerRunning", "false");
-    updateButtonStates();
-  });
+  // pauseBtn.addEventListener("click", () => {
+  //   clearInterval(interval);
+  //   interval = null;
+  //   localStorage.setItem("timerRunning", "false");
+  //   updateButtonStates();
+  // });
 
   stopBtn.addEventListener("click", () => {
     clearInterval(interval);
