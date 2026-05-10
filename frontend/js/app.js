@@ -1,14 +1,154 @@
-const API =
-  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://127.0.0.1:5001"
-    : "https://saathi-sync.onrender.com";
+const API = "https://saathi-sync.onrender.com";
 
 let editingDeadlineId = null;
 let currentPartnersCache = [];
 let currentPartnerIds = new Set();
 
+// ===== INTELLIGENT CACHING SYSTEM =====
+const CACHE_TTL = {
+  SHORT: 5 * 60 * 1000,      // 5 min for live data (deadlines, groups, partners)
+  MEDIUM: 15 * 60 * 1000,    // 15 min for semi-static data (resources, sessions)
+  LONG: 60 * 60 * 1000       // 1 hour for static data (profile, subjects, books)
+};
+
+function getCacheKey(endpoint) {
+  return `cache_${endpoint}_${getUserId()}`;
+}
+
+function getCache(endpoint, defaultTTL = CACHE_TTL.MEDIUM) {
+  const key = getCacheKey(endpoint);
+  const cached = localStorage.getItem(key);
+  if (!cached) return null;
+
+  const { data, timestamp } = JSON.parse(cached);
+  const age = Date.now() - timestamp;
+  
+  if (age > defaultTTL) {
+    localStorage.removeItem(key);
+    return null;
+  }
+  return data;
+}
+
+function setCache(endpoint, data, ttl = CACHE_TTL.MEDIUM) {
+  const key = getCacheKey(endpoint);
+  localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+}
+
+function invalidateCache(...endpoints) {
+  endpoints.forEach(ep => {
+    localStorage.removeItem(getCacheKey(ep));
+  });
+}
+
+// ===== REQUEST DEBOUNCING SYSTEM =====
+const pendingRequests = new Map();
+const REQUEST_TIMEOUT = 2000; // 2 seconds
+
+function getRequestKey(endpoint, options = {}) {
+  // Create unique key for endpoint + method combination
+  const method = options.method || 'GET';
+  return `${method}_${endpoint}`;
+}
+
+function isRequestPending(endpoint, options = {}) {
+  const key = getRequestKey(endpoint, options);
+  return pendingRequests.has(key);
+}
+
+function markRequestPending(endpoint, options = {}) {
+  const key = getRequestKey(endpoint, options);
+  pendingRequests.set(key, true);
+}
+
+function clearRequestLock(endpoint, options = {}) {
+  const key = getRequestKey(endpoint, options);
+  pendingRequests.delete(key);
+}
+
+function debounceRequest(endpoint, options = {}) {
+  const key = getRequestKey(endpoint, options);
+  
+  // If request already pending, return null to indicate skip
+  if (pendingRequests.has(key)) {
+    console.warn(`Request already pending: ${key}`);
+    return false;
+  }
+  
+  // Mark as pending
+  markRequestPending(endpoint, options);
+  
+  // Auto-clear after timeout
+  setTimeout(() => {
+    clearRequestLock(endpoint, options);
+  }, REQUEST_TIMEOUT);
+  
+  return true;
+}
+
+function fetchWithCache(endpoint, options = {}, cacheTTL = CACHE_TTL.MEDIUM, useCache = true) {
+  return new Promise(async (resolve, reject) => {
+    // Check if request is already pending (debounce)
+    if (!debounceRequest(endpoint, options)) {
+      // Request already pending, return cached data or reject
+      if (useCache) {
+        const cached = getCache(endpoint, cacheTTL);
+        if (cached) {
+          resolve(cached);
+          return;
+        }
+      }
+      reject(new Error("Request already pending"));
+      return;
+    }
+
+    try {
+      if (useCache) {
+        const cached = getCache(endpoint, cacheTTL);
+        if (cached) {
+          clearRequestLock(endpoint, options);
+          resolve(cached);
+          // Silently sync with API in background for next page load
+          fetch(API + endpoint)
+            .then(res => res.json())
+            .then(data => setCache(endpoint, data, cacheTTL))
+            .catch(() => {});
+          return;
+        }
+      }
+
+      const res = await fetch(API + endpoint, options);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      setCache(endpoint, data, cacheTTL);
+      clearRequestLock(endpoint, options);
+      resolve(data);
+    } catch (err) {
+      clearRequestLock(endpoint, options);
+      reject(err);
+    }
+  });
+}
+
 function isFastEmail(email) {
   return typeof email === "string" && email.trim().toLowerCase().endsWith("@nu.edu.pk");
+}
+
+// ===== DEBOUNCED FETCH WRAPPER =====
+async function fetchDebounced(endpoint, options = {}) {
+  // Check if request is already pending
+  if (!debounceRequest(endpoint, options)) {
+    throw new Error("Request already pending. Please wait.");
+  }
+
+  try {
+    const res = await fetch(API + endpoint, options);
+    clearRequestLock(endpoint, options);
+    return res;
+  } catch (err) {
+    clearRequestLock(endpoint, options);
+    throw err;
+  }
 }
 
 
@@ -230,6 +370,12 @@ async function createGroup() {
   }
 
   try {
+    // Debounce create request
+    if (!debounceRequest("/groups", { method: "POST" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/groups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -245,6 +391,8 @@ async function createGroup() {
     alert("Group created successfully");
     nameEl.value = "";
     if (descEl) descEl.value = "";
+    invalidateCache("/groups");
+    invalidateCache(`/groups/joined/${userId}`);
     loadGroups();
   } catch (err) {
     alert("Error connecting to server");
@@ -257,10 +405,7 @@ async function loadGroups(query = "") {
   const list = document.getElementById("groupsList");
   if (!list) return;
 
-  try {
-    const endpoint = query ? `/groups?q=${encodeURIComponent(query)}` : "/groups";
-    const res = await fetch(API + endpoint);
-    const data = await res.json();
+  function renderGroups(data) {
     list.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -285,12 +430,21 @@ async function loadGroups(query = "") {
       `;
       list.appendChild(item);
     });
+  }
+
+  try {
+    const endpoint = query ? `/groups?q=${encodeURIComponent(query)}` : "/groups";
+    // Skip cache for searches
+    const useCache = !query;
+    const data = await fetchWithCache(endpoint, {}, CACHE_TTL.SHORT, useCache);
+    renderGroups(data);
 
     if (userId) {
       loadJoinedGroups(userId);
     }
   } catch (err) {
     console.error("Error loading groups:", err);
+    list.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:red;">Failed to load groups.</p>';
   }
 }
 
@@ -388,12 +542,19 @@ async function joinGroup(groupId) {
   if (!userId) return;
 
   try {
+    // Debounce join request
+    if (!debounceRequest(`/groups/${groupId}/join`, { method: "POST" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + `/groups/${groupId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
     });
     const data = await res.json();
+    clearRequestLock(`/groups/${groupId}/join`, { method: "POST" });
 
     if (!res.ok) {
       alert(data.error || "Failed to join group");
@@ -401,9 +562,12 @@ async function joinGroup(groupId) {
     }
 
     alert("Joined group successfully");
+    invalidateCache("/groups");
+    invalidateCache(`/groups/joined/${userId}`);
     loadGroups((document.getElementById("groupSearch") || { value: "" }).value.trim());
     loadJoinedGroups(userId);
   } catch (err) {
+    clearRequestLock(`/groups/${groupId}/join`, { method: "POST" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -478,12 +642,19 @@ async function deleteGroup(groupId) {
   if (!confirm("Delete this group? All members will be removed from this group.")) return;
 
   try {
+    // Debounce delete request
+    if (!debounceRequest(`/groups/${groupId}`, { method: "DELETE" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + `/groups/${groupId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
     });
     const data = await res.json();
+    clearRequestLock(`/groups/${groupId}`, { method: "DELETE" });
 
     if (!res.ok) {
       alert(data.error || "Failed to delete group");
@@ -493,9 +664,12 @@ async function deleteGroup(groupId) {
     alert("Group deleted successfully");
     const details = document.getElementById("groupDetailsList");
     if (details) details.innerHTML = "";
+    invalidateCache("/groups");
+    invalidateCache(`/groups/joined/${userId}`);
     loadGroups((document.getElementById("groupSearch") || { value: "" }).value.trim());
     loadJoinedGroups(userId);
   } catch (err) {
+    clearRequestLock(`/groups/${groupId}`, { method: "DELETE" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -520,17 +694,24 @@ async function addDeadline() {
     return;
   }
 
-  const endpoint = editingDeadlineId ? `${API}/deadlines/${editingDeadlineId}` : `${API}/deadlines`;
+  const endpointPath = editingDeadlineId ? `/deadlines/${editingDeadlineId}` : `/deadlines`;
   const method = editingDeadlineId ? "PUT" : "POST";
   const payload = { title, due_date, user_id: userId, priority, status };
 
   try {
-    const res = await fetch(endpoint, {
+    // Debounce request to prevent duplicate submissions
+    if (!debounceRequest(endpointPath, { method })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
+    const res = await fetch(API + endpointPath, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    clearRequestLock(endpointPath, { method });
 
     if (!res.ok) {
       alert(data.error || (editingDeadlineId ? "Failed to update deadline" : "Failed to add deadline"));
@@ -545,6 +726,7 @@ async function addDeadline() {
     editingDeadlineId = null;
     const addButton = document.getElementById("deadlineSubmitBtn");
     if (addButton) addButton.textContent = "Add Deadline";
+    invalidateCache(`/deadlines/${userId}`);
     loadDeadlines();
   } catch (err) {
     alert("Error connecting to server");
@@ -558,15 +740,12 @@ async function loadDeadlines(priority = null, status = null) {
   const completedList = document.getElementById("completedDeadlinesList");
   if (!userId || !list || !completedList) return;
 
-  let url = API + "/deadlines/" + userId;
-  const params = [];
-  if (priority && priority !== 'All Priorities') params.push(`priority=${encodeURIComponent(priority)}`);
-  if (status && status !== 'All Statuses') params.push(`status=${encodeURIComponent(status)}`);
-  if (params.length) url += '?' + params.join('&');
+  const endpoint = `/deadlines/${userId}`;
+  // Skip cache if filters are applied
+  const useCache = !priority && !status;
 
   try {
-    const res = await fetch(url);
-    const data = await res.json();
+    const data = await fetchWithCache(endpoint, {}, CACHE_TTL.SHORT, useCache);
     list.innerHTML = "";
     completedList.innerHTML = "";
 
@@ -576,48 +755,52 @@ async function loadDeadlines(priority = null, status = null) {
       return;
     }
 
-    const activeDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() !== "completed");
-    const completedDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() === "completed");
+    let activeDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() !== "completed");
+    let completedDeadlines = data.filter((deadline) => String(deadline.status || "").toLowerCase() === "completed");
+    
+    // Apply filters if provided
+    if (priority && priority !== 'All Priorities') activeDeadlines = activeDeadlines.filter(d => d.priority === priority);
+    if (status && status !== 'All Statuses') activeDeadlines = activeDeadlines.filter(d => d.status === status);
 
     if (activeDeadlines.length === 0) {
       list.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No active deadlines.</td></tr>';
+    } else {
+      activeDeadlines.forEach((deadline) => {
+        const item = document.createElement("tr");
+        item.innerHTML = `
+          <td>${deadline.title}</td>
+          <td>${deadline.due_date}</td>
+          <td>${deadline.priority || "Medium"}</td>
+          <td>${deadline.status || "Pending"}</td>
+          <td style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick='editDeadline(${JSON.stringify(deadline)})' class="btn">Edit</button>
+            <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+          </td>
+        `;
+        list.appendChild(item);
+      });
     }
 
     if (completedDeadlines.length === 0) {
       completedList.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No completed deadlines yet.</td></tr>';
+    } else {
+      completedDeadlines.forEach((deadline) => {
+        const item = document.createElement("tr");
+        item.innerHTML = `
+          <td>${deadline.title}</td>
+          <td>${deadline.due_date}</td>
+          <td>${deadline.priority || "Medium"}</td>
+          <td>${deadline.status || "Completed"}</td>
+          <td>
+            <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
+          </td>
+        `;
+        completedList.appendChild(item);
+      });
     }
-
-    activeDeadlines.forEach((deadline) => {
-      const item = document.createElement("tr");
-      item.innerHTML = `
-        <td>${deadline.title}</td>
-        <td>${deadline.due_date}</td>
-        <td>${deadline.priority || "Medium"}</td>
-        <td>${deadline.status || "Pending"}</td>
-        <td style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button onclick='editDeadline(${JSON.stringify(deadline)})' class="btn">Edit</button>
-          
-          <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
-        </td>
-      `;
-      list.appendChild(item);
-    });
-
-    completedDeadlines.forEach((deadline) => {
-      const item = document.createElement("tr");
-      item.innerHTML = `
-        <td>${deadline.title}</td>
-        <td>${deadline.due_date}</td>
-        <td>${deadline.priority || "Medium"}</td>
-        <td>${deadline.status || "Completed"}</td>
-        <td>
-          <button onclick="deleteDeadline(${deadline.deadline_id})" class="btn btn-danger">Delete</button>
-        </td>
-      `;
-      completedList.appendChild(item);
-    });
   } catch (err) {
     console.error("Error loading deadlines:", err);
+    list.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">Failed to load deadlines.</td></tr>';
   }
 }
 
@@ -663,7 +846,14 @@ async function markDeadlineCompleted(deadlineId) {
 async function deleteDeadline(id) {
   if (!confirm("Are you sure you want to delete this deadline?")) return;
 
+  const userId = getUserId();
   try {
+    // Debounce delete request
+    if (!debounceRequest(`/deadlines/${id}`, { method: "DELETE" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + `/deadlines/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok) {
@@ -672,8 +862,11 @@ async function deleteDeadline(id) {
     }
 
     alert("Deadline deleted");
+    clearRequestLock(`/deadlines/${id}`, { method: "DELETE" });
+    invalidateCache(`/deadlines/${userId}`);
     loadDeadlines();
   } catch (err) {
+    clearRequestLock(`/deadlines/${id}`, { method: "DELETE" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -700,6 +893,12 @@ async function uploadResource() {
   }
 
   try {
+    // Debounce upload request
+    if (!debounceRequest("/resources", { method: "POST" })) {
+      alert("Upload already in progress. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/resources", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -723,6 +922,8 @@ async function uploadResource() {
     descEl.value = "";
     if (fileEl) fileEl.value = "";
     if (visibilityEl) visibilityEl.value = "Private";
+    invalidateCache(`/resources/user/${userId}`);
+    invalidateCache(`/resources?visibility=Public`);
     loadResources();
   } catch (err) {
     alert("Error connecting to server");
@@ -738,8 +939,8 @@ async function loadResources() {
   if (!userId) return;
 
   try {
-    const res = await fetch(API + `/resources/user/${userId}`);
-    const data = await res.json();
+    const endpoint = `/resources/user/${userId}`;
+    const data = await fetchWithCache(endpoint, {}, CACHE_TTL.MEDIUM, true);
     list.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -765,25 +966,38 @@ async function loadResources() {
     });
   } catch (err) {
     console.error("Error loading resources:", err);
+    list.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:red;">Failed to load resources.</p>';
   }
 }
 
 async function deleteResource(resourceId) {
   if (!confirm("Delete this resource? This action cannot be undone.")) return;
 
+  const userId = getUserId();
   try {
+    // Debounce delete request
+    if (!debounceRequest(`/resources/${resourceId}`, { method: "DELETE" })) {
+      alert("Delete already in progress. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + `/resources/${resourceId}`, {
       method: "DELETE",
     });
     const data = await res.json();
+    clearRequestLock(`/resources/${resourceId}`, { method: "DELETE" });
+
     if (!res.ok) {
       alert(data.error || "Failed to delete resource");
       return;
     }
 
     alert("Resource deleted successfully");
+    invalidateCache(`/resources/user/${userId}`);
+    invalidateCache(`/resources?visibility=Public`);
     loadResources();
   } catch (err) {
+    clearRequestLock(`/resources/${resourceId}`, { method: "DELETE" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -808,6 +1022,12 @@ async function addSession() {
   const duration = Math.round(durationHours * 60);
 
   try {
+    // Debounce session request
+    if (!debounceRequest("/sessions", { method: "POST" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -829,6 +1049,7 @@ async function addSession() {
     alert("Study session added");
     if (subjectEl) subjectEl.value = "";
     durationEl.value = "";
+    invalidateCache(`/sessions/${userId}`);
     loadSessions();
   } catch (err) {
     alert("Error connecting to server");
@@ -842,8 +1063,8 @@ async function loadSessions() {
   if (!userId || !list) return;
 
   try {
-    const res = await fetch(API + "/sessions/" + userId);
-    const data = await res.json();
+    const endpoint = `/sessions/${userId}`;
+    const data = await fetchWithCache(endpoint, {}, CACHE_TTL.MEDIUM, true);
     list.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -884,12 +1105,19 @@ async function updateProfile() {
   if (availabilityEl) payload.availability_time = availabilityEl.value.trim() || null;
 
   try {
+    // Debounce update request
+    if (!debounceRequest(`/profile/${userId}`, { method: "PUT" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/profile/" + userId, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    clearRequestLock(`/profile/${userId}`, { method: "PUT" });
 
     if (!res.ok) {
       alert(data.error || "Failed to update profile");
@@ -905,8 +1133,11 @@ async function updateProfile() {
     }
 
     alert("Profile updated successfully");
+    invalidateCache(`/profile/${userId}`);
+    invalidateCache(`/subjects/${userId}`);
     loadProfile();
   } catch (err) {
+    clearRequestLock(`/profile/${userId}`, { method: "PUT" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -917,19 +1148,14 @@ async function loadProfile() {
   if (!userId) return;
 
   try {
-    const [profileRes, subjectRes] = await Promise.all([
-      fetch(API + "/profile/" + userId),
-      fetch(API + "/subjects/" + userId),
-    ]);
-
-    const profileData = await profileRes.json();
-    const subjectData = await subjectRes.json();
-    const [sessions, deadlines, resources, bookmarks, groups] = await Promise.all([
-      fetchArray(`/sessions/${userId}`),
-      fetchArray(`/deadlines/${userId}`),
-      fetchArray(`/resources/user/${userId}`),
-      fetchArray(`/bookmarks/${userId}`),
-      fetchArray(`/groups/joined/${userId}`),
+    const [profileData, subjectData, sessions, deadlines, resources, bookmarks, groups] = await Promise.all([
+      fetchWithCache(`/profile/${userId}`, {}, CACHE_TTL.LONG, true),
+      fetchWithCache(`/subjects/${userId}`, {}, CACHE_TTL.LONG, true),
+      fetchWithCache(`/sessions/${userId}`, {}, CACHE_TTL.MEDIUM, true),
+      fetchWithCache(`/deadlines/${userId}`, {}, CACHE_TTL.SHORT, true),
+      fetchWithCache(`/resources/user/${userId}`, {}, CACHE_TTL.MEDIUM, true),
+      fetchWithCache(`/bookmarks/${userId}`, {}, CACHE_TTL.MEDIUM, true),
+      fetchWithCache(`/groups/joined/${userId}`, {}, CACHE_TTL.SHORT, true),
     ]);
 
     if (profileRes.ok) {
@@ -1102,8 +1328,9 @@ async function loadBooks() {
 
   try {
     const endpoint = query ? `/library/search?q=${encodeURIComponent(query)}` : "/library";
-    const res = await fetch(API + endpoint);
-    const data = await res.json();
+    // Skip cache for search queries, use cache for default view
+    const useCache = !query;
+    const data = await fetchWithCache(endpoint, {}, CACHE_TTL.LONG, useCache);
     list.innerHTML = "";
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -1195,12 +1422,19 @@ async function connectPartner(partnerId) {
   if (!userId) return;
 
   try {
+    // Debounce connect request
+    if (!debounceRequest("/partners/connect", { method: "POST" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/partners/connect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, partner_id: partnerId }),
     });
     const data = await res.json();
+    clearRequestLock("/partners/connect", { method: "POST" });
 
     if (!res.ok) {
       alert(data.error || "Failed to connect partner");
@@ -1208,9 +1442,11 @@ async function connectPartner(partnerId) {
     }
 
     alert("Partner added to current partners");
+    invalidateCache(`/partners/${userId}/current`);
     await loadCurrentPartners(true);
     await findPartners();
   } catch (err) {
+    clearRequestLock("/partners/connect", { method: "POST" });
     console.error("Error connecting partner:", err);
   }
 }
@@ -1281,12 +1517,19 @@ async function addBookmark() {
   }
 
   try {
+    // Debounce bookmark request
+    if (!debounceRequest("/bookmarks", { method: "POST" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + "/bookmarks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, resource_id, saved_topic }),
     });
     const data = await res.json();
+    clearRequestLock("/bookmarks", { method: "POST" });
 
     if (!res.ok) {
       alert(data.error || "Failed to add bookmark");
@@ -1295,8 +1538,11 @@ async function addBookmark() {
 
     alert("Bookmark added");
     if (topicEl) topicEl.value = "";
+    if (resourceEl) resourceEl.value = "";
+    invalidateCache(`/bookmarks/${userId}`);
     loadBookmarks();
   } catch (err) {
+    clearRequestLock("/bookmarks", { method: "POST" });
     alert("Error connecting to server");
     console.error(err);
   }
@@ -1337,17 +1583,27 @@ async function loadBookmarks() {
 async function deleteBookmark(bookmarkId) {
   if (!confirm("Delete this bookmark?")) return;
 
+  const userId = getUserId();
   try {
+    // Debounce delete request
+    if (!debounceRequest(`/bookmarks/${bookmarkId}`, { method: "DELETE" })) {
+      alert("Request already pending. Please wait a moment.");
+      return;
+    }
+
     const res = await fetch(API + `/bookmarks/${bookmarkId}`, { method: "DELETE" });
     const data = await res.json();
+    clearRequestLock(`/bookmarks/${bookmarkId}`, { method: "DELETE" });
 
     if (!res.ok) {
       alert(data.error || "Failed to delete bookmark");
       return;
     }
 
+    invalidateCache(`/bookmarks/${userId}`);
     loadBookmarks();
   } catch (err) {
+    clearRequestLock(`/bookmarks/${bookmarkId}`, { method: "DELETE" });
     console.error("Error deleting bookmark:", err);
   }
 }
@@ -1436,11 +1692,9 @@ function hoursText(totalMinutes) {
   return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
 }
 
-async function fetchArray(endpoint) {
+async function fetchArray(endpoint, ttl = CACHE_TTL.MEDIUM) {
   try {
-    const res = await fetch(API + endpoint);
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await fetchWithCache(endpoint, {}, ttl, true);
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error(`Error loading ${endpoint}:`, err);
@@ -1448,11 +1702,10 @@ async function fetchArray(endpoint) {
   }
 }
 
-async function fetchObject(endpoint) {
+async function fetchObject(endpoint, ttl = CACHE_TTL.MEDIUM) {
   try {
-    const res = await fetch(API + endpoint);
-    if (!res.ok) return null;
-    return await res.json();
+    const data = await fetchWithCache(endpoint, {}, ttl, true);
+    return data || null;
   } catch (err) {
     console.error(`Error loading ${endpoint}:`, err);
     return null;
@@ -1464,12 +1717,12 @@ async function loadDashboardData() {
   if (!userId) return;
 
   const [sessions, groups, deadlines, resources, bookmarks, profile] = await Promise.all([
-    fetchArray(`/sessions/${userId}`),
-    fetchArray("/groups"),
-    fetchArray(`/deadlines/${userId}`),
-    fetchArray(`/resources/user/${userId}`),
-    fetchArray(`/bookmarks/${userId}`),
-    fetchObject(`/profile/${userId}`),
+    fetchArray(`/sessions/${userId}`, CACHE_TTL.MEDIUM),
+    fetchArray("/groups", CACHE_TTL.SHORT),
+    fetchArray(`/deadlines/${userId}`, CACHE_TTL.SHORT),
+    fetchArray(`/resources/user/${userId}`, CACHE_TTL.MEDIUM),
+    fetchArray(`/bookmarks/${userId}`, CACHE_TTL.MEDIUM),
+    fetchObject(`/profile/${userId}`, CACHE_TTL.LONG),
   ]);
 
   if (profile) {
